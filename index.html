@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK GRC Document Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Master Progress Bar */
+        .master-progress {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .master-progress h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8rem;
+        }
+
+        .master-progress-bar {
+            width: 100%;
+            height: 50px;
+            background-color: #e0e0e0;
+            border-radius: 25px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .master-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+            transition: width 0.8s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .master-progress-text {
+            color: white;
+            font-weight: bold;
+            font-size: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .master-progress-details {
+            text-align: center;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Progress Overview Card */
+        .progress-overview {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .progress-overview h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .progress-item {
+            margin-bottom: 20px;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #ffc107, #ff9800);
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, #dc3545, #c82333);
+        }
+
+        .progress-fill.success {
+            background: linear-gradient(90deg, #28a745, #218838);
+        }
+
+        /* Stats Cards */
+        .stats-overview {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Evidence Timeline */
+        .timeline-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .timeline-header h2 {
+            color: #667eea;
+            font-size: 1.5rem;
+        }
+
+        /* Timeline Grid View */
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .quarter-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quarter-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .quarter-card.completed {
+            background: #f0f8f0;
+            border-color: #28a745;
+        }
+
+        .quarter-card.current {
+            background: #f0f4ff;
+            border-color: #667eea;
+        }
+
+        .quarter-card.future {
+            opacity: 0.7;
+        }
+
+        .quarter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .quarter-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .quarter-status {
+            font-size: 1.5rem;
+        }
+
+        .quarter-dates {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .quarter-progress {
+            margin-bottom: 10px;
+        }
+
+        .mini-progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .mini-progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s ease;
+        }
+
+        .quarter-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+
+        .quarter-action {
+            text-align: center;
+            margin-top: 15px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        /* Document Categories */
+        .categories-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .category-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .category-tab {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-tab:hover {
+            border-color: #667eea;
+        }
+
+        .category-tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .category-badge {
+            background: rgba(255,255,255,0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+
+        .category-content {
+            display: none;
+        }
+
+        .category-content.active {
+            display: block;
+        }
+
+        .document-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .document-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .document-item.completed {
+            background: #f0f8f0;
+            border-color: #28a745;
+        }
+
+        .document-item.required {
+            border-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .document-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #333;
+        }
+
+        .document-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #e0e0e0;
+        }
+
+        .document-status.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .document-status.required {
+            background: #dc3545;
+            color: white;
+        }
+
+        .document-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .document-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 50px auto;
+            padding: 0;
+            border-radius: 10px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .modal-body {
+            padding: 25px;
+        }
+
+        /* File Upload Area */
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: #f0f4ff;
+            border-color: #5a6fd8;
+        }
+
+        .upload-area.drag-over {
+            background: #e8ecff;
+            border-color: #4a5fc8;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .upload-subtext {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* File List */
+        .file-list {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e0e0e0;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+        }
+
+        .file-details {
+            text-align: left;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 3px;
+        }
+
+        .file-meta {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-outline {
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        /* Notes */
+        .notes-section {
+            margin-top: 20px;
+        }
+
+        .notes-section h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        /* Export Section */
+        .export-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .timeline-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .category-tabs {
+                flex-direction: column;
+            }
+
+            .category-tab {
+                width: 100%;
+            }
+
+            .export-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85rem;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-info {
+            background: #cff4fc;
+            color: #055160;
+            border: 1px solid #b6effb;
+        }
+
+        .alert-success {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏳️‍⚧️ UK GRC Document Tracker</h1>
+            <p>Organize and track your Gender Recognition Certificate application</p>
+        </div>
+
+        <div class="master-progress">
+            <h2>Overall Application Progress</h2>
+            <div class="master-progress-bar">
+                <div class="master-progress-fill" id="master-progress" style="width: 0%">
+                    <span class="master-progress-text" id="master-progress-text">0%</span>
+                </div>
+            </div>
+            <div class="master-progress-details" id="master-progress-details">
+                Loading progress...
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="progress-overview">
+                <h2>📊 Overall Progress</h2>
+                
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Timeline Progress</span>
+                        <span id="timeline-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="timeline-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="timeline-info">Started December 2023</small>
+                </div>
+
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Core Documents</span>
+                        <span id="core-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill danger" id="core-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="core-info">0 of 0 required documents</small>
+                </div>
+
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Medical Reports</span>
+                        <span id="medical-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill warning" id="medical-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="medical-info">0 of 2 reports</small>
+                </div>
+
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Evidence Collection</span>
+                        <span id="evidence-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill success" id="evidence-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="evidence-info">0 pieces collected (target: 16)</small>
+                </div>
+
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Name Change</span>
+                        <span id="name-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="name-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="name-info">0 documents uploaded</small>
+                </div>
+
+                <div class="progress-item">
+                    <div class="progress-label">
+                        <span>Marriage/Partnership</span>
+                        <span id="marriage-percentage">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="marriage-progress" style="width: 0%"></div>
+                    </div>
+                    <small id="marriage-info">0 documents uploaded</small>
+                </div>
+            </div>
+
+            <div class="stats-overview">
+                <h2>📈 Quick Stats</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-documents">0</div>
+                        <div class="stat-label">Total Documents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="days-remaining">0</div>
+                        <div class="stat-label">Days Remaining</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="current-quarter">Q1</div>
+                        <div class="stat-label">Current Quarter</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="quarters-complete">0/8</div>
+                        <div class="stat-label">Quarters Complete</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info" style="margin-top: 20px;">
+                    <span>💡</span>
+                    <span>Click on any quarter below to manage its evidence documents</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="timeline-section">
+            <div class="timeline-header">
+                <h2>📅 Evidence Timeline (2 Years)</h2>
+            </div>
+            
+            <div class="timeline-grid" id="timeline-grid">
+                <!-- Quarters will be generated here -->
+            </div>
+        </div>
+
+        <div class="categories-section">
+            <h2>📁 Document Categories</h2>
+            <div class="category-tabs">
+                <div class="category-tab active" onclick="switchCategory('core')" id="tab-core">
+                    <span>📄 Core Documents</span>
+                    <span class="category-badge" id="badge-core">0/4</span>
+                </div>
+                <div class="category-tab" onclick="switchCategory('medical')" id="tab-medical">
+                    <span>🏥 Medical Reports</span>
+                    <span class="category-badge" id="badge-medical">0/2</span>
+                </div>
+                <div class="category-tab" onclick="switchCategory('name')" id="tab-name">
+                    <span>📝 Name Change</span>
+                    <span class="category-badge" id="badge-name">0</span>
+                </div>
+                <div class="category-tab" onclick="switchCategory('marriage')" id="tab-marriage">
+                    <span>💍 Marriage/Partnership</span>
+                    <span class="category-badge" id="badge-marriage">0</span>
+                </div>
+            </div>
+
+            <div class="category-content active" id="content-core">
+                <div class="document-list" id="docs-core">
+                    <!-- Core documents will be listed here -->
+                </div>
+            </div>
+
+            <div class="category-content" id="content-medical">
+                <div class="document-list" id="docs-medical">
+                    <!-- Medical documents will be listed here -->
+                </div>
+            </div>
+
+            <div class="category-content" id="content-name">
+                <div class="document-list" id="docs-name">
+                    <!-- Name change documents will be listed here -->
+                </div>
+            </div>
+
+            <div class="category-content" id="content-marriage">
+                <div class="document-list" id="docs-marriage">
+                    <!-- Marriage documents will be listed here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="export-section">
+            <h2>📤 Export & Backup</h2>
+            <div class="export-buttons">
+                <button class="btn btn-primary" onclick="exportProgress()">
+                    <span>📊</span> Export Progress Report
+                </button>
+                <button class="btn btn-secondary" onclick="exportBackup()">
+                    <span>💾</span> Download Full Backup
+                </button>
+                <button class="btn btn-success" onclick="printChecklist()">
+                    <span>🖨️</span> Print Checklist
+                </button>
+            </div>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                <h3 style="margin-bottom: 15px;">📥 Import & Restore</h3>
+                <div class="export-buttons">
+                    <button class="btn btn-primary" onclick="document.getElementById('import-file').click()">
+                        <span>📂</span> Import Backup
+                    </button>
+                    <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importBackup(this)">
+                    <button class="btn btn-outline" onclick="clearAllData()">
+                        <span>🗑️</span> Clear All Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quarter Modal -->
+    <div class="modal" id="quarter-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Quarter Evidence</h3>
+                <button class="close-modal" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="upload-area" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">Drop files here or click to upload</div>
+                    <div class="upload-subtext">Upload evidence documents for this quarter</div>
+                    <input type="file" id="file-input" multiple accept="*/*" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+
+                <div class="file-list" id="file-list">
+                    <!-- Files will be listed here -->
+                </div>
+
+                <div class="notes-section">
+                    <h4>📝 Notes for this quarter</h4>
+                    <textarea class="notes-textarea" id="quarter-notes" placeholder="Add any notes about evidence collection for this quarter..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // GRC Tracker Application
+        class GRCTracker {
+            constructor() {
+                this.storageKey = 'grc_tracker_v2';
+                this.currentQuarter = null;
+                this.currentCategory = 'core';
+                this.startDate = new Date('2023-12-01');
+                this.targetDate = new Date('2025-12-01');
+                
+                this.initializeData();
+                this.setupEventHandlers();
+                this.render();
+                
+                // Auto-save notes
+                this.autoSaveTimer = null;
+            }
+
+            initializeData() {
+                const stored = localStorage.getItem(this.storageKey);
+                this.data = stored ? JSON.parse(stored) : {
+                    quarters: {},
+                    documents: {
+                        core: {},
+                        medical: {},
+                        name: {},
+                        marriage: {}
+                    },
+                    notes: {},
+                    settings: {
+                        startDate: '2023-12-01',
+                        targetDate: '2025-12-01'
+                    }
+                };
+
+                // Document definitions
+                this.documentDefs = {
+                    core: [
+                        {
+                            id: 'birth-certificate',
+                            title: 'Birth/Adoption Certificate',
+                            description: 'Original or certified copy of your full birth or adoption certificate',
+                            required: true
+                        },
+                        {
+                            id: 'statutory-declaration',
+                            title: 'Statutory Declaration',
+                            description: 'Signed declaration that your gender change is permanent',
+                            required: true
+                        },
+                        {
+                            id: 'application-form',
+                            title: 'Application Form',
+                            description: 'Completed GRC application form from gov.uk',
+                            required: true
+                        },
+                        {
+                            id: 'application-fee',
+                            title: 'Application Fee Receipt',
+                            description: 'Proof of £5 fee payment (or fee waiver)',
+                            required: true
+                        }
+                    ],
+                    medical: [
+                        {
+                            id: 'specialist-report',
+                            title: 'Specialist Medical Report',
+                            description: 'Report from registered medical practitioner specialising in gender dysphoria confirming diagnosis',
+                            required: true
+                        },
+                        {
+                            id: 'second-report',
+                            title: 'Second Medical Report',
+                            description: 'Report from any registered medical practitioner detailing treatment (can be your GP)',
+                            required: true
+                        }
+                    ],
+                    name: [
+                        {
+                            id: 'deed-poll',
+                            title: 'Deed Poll',
+                            description: 'Enrolled or unenrolled deed poll for name change',
+                            required: false
+                        },
+                        {
+                            id: 'statutory-declaration-name',
+                            title: 'Statutory Declaration of Name Change',
+                            description: 'Alternative to deed poll',
+                            required: false
+                        }
+                    ],
+                    marriage: [
+                        {
+                            id: 'marriage-certificate',
+                            title: 'Marriage Certificate',
+                            description: 'Certificate of current marriage',
+                            required: false
+                        },
+                        {
+                            id: 'spouse-declaration',
+                            title: 'Spouse Statutory Declaration',
+                            description: 'Spouse\'s consent to remain married',
+                            required: false
+                        },
+                        {
+                            id: 'civil-partnership-certificate',
+                            title: 'Civil Partnership Certificate',
+                            description: 'Certificate of current civil partnership',
+                            required: false
+                        }
+                    ]
+                };
+            }
+
+            setupEventHandlers() {
+                // Upload area
+                const uploadArea = document.getElementById('upload-area');
+                if (uploadArea) {
+                    uploadArea.onclick = () => document.getElementById('file-input').click();
+                }
+
+                // Quarter notes auto-save
+                const notesTextarea = document.getElementById('quarter-notes');
+                if (notesTextarea) {
+                    notesTextarea.addEventListener('input', (e) => {
+                        clearTimeout(this.autoSaveTimer);
+                        this.autoSaveTimer = setTimeout(() => {
+                            this.saveQuarterNotes(e.target.value);
+                        }, 1000);
+                    });
+                }
+            }
+
+            saveData() {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+            }
+
+            render() {
+                this.updateProgress();
+                this.updateStats();
+                this.renderTimeline();
+                this.renderDocuments();
+                this.updateCategoryBadges();
+            }
+
+            updateProgress() {
+                // Timeline progress
+                const now = new Date();
+                const totalDays = (this.targetDate - this.startDate) / (1000 * 60 * 60 * 24);
+                const elapsedDays = (now - this.startDate) / (1000 * 60 * 60 * 24);
+                const timelineProgress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+                
+                document.getElementById('timeline-progress').style.width = `${timelineProgress}%`;
+                document.getElementById('timeline-percentage').textContent = `${timelineProgress.toFixed(1)}%`;
+                document.getElementById('timeline-info').textContent = 
+                    `Started ${this.formatDate(this.startDate)} • Target ${this.formatDate(this.targetDate)}`;
+
+                // Core documents progress
+                const coreTotal = this.documentDefs.core.filter(d => d.required).length;
+                const coreComplete = this.documentDefs.core.filter(d => 
+                    d.required && this.hasDocument('core', d.id)
+                ).length;
+                const coreProgress = coreTotal > 0 ? (coreComplete / coreTotal) * 100 : 0;
+                
+                document.getElementById('core-progress').style.width = `${coreProgress}%`;
+                document.getElementById('core-percentage').textContent = `${coreProgress.toFixed(0)}%`;
+                document.getElementById('core-info').textContent = `${coreComplete} of ${coreTotal} required documents`;
+
+                // Medical reports progress
+                const medicalTotal = 2;
+                const medicalComplete = this.documentDefs.medical.filter(d => 
+                    this.hasDocument('medical', d.id)
+                ).length;
+                const medicalProgress = (medicalComplete / medicalTotal) * 100;
+                
+                document.getElementById('medical-progress').style.width = `${medicalProgress}%`;
+                document.getElementById('medical-percentage').textContent = `${medicalProgress.toFixed(0)}%`;
+                document.getElementById('medical-info').textContent = `${medicalComplete} of ${medicalTotal} reports`;
+
+                // Evidence progress
+                const evidenceTarget = 16; // 8 quarters * 2 pieces
+                const evidenceCount = this.getTotalEvidenceCount();
+                const evidenceProgress = Math.min(100, (evidenceCount / evidenceTarget) * 100);
+                
+                document.getElementById('evidence-progress').style.width = `${evidenceProgress}%`;
+                document.getElementById('evidence-percentage').textContent = `${evidenceProgress.toFixed(0)}%`;
+                document.getElementById('evidence-info').textContent = `${evidenceCount} pieces collected (target: ${evidenceTarget})`;
+
+                // Name change progress (100% if ANY document is uploaded)
+                const nameComplete = this.documentDefs.name.filter(d => 
+                    this.hasDocument('name', d.id)
+                ).length;
+                const nameProgress = nameComplete > 0 ? 100 : 0;
+                
+                document.getElementById('name-progress').style.width = `${nameProgress}%`;
+                document.getElementById('name-percentage').textContent = `${nameProgress}%`;
+                document.getElementById('name-info').textContent = nameComplete > 0 ? 
+                    `✓ Name change documented` : `No name change documents`;
+
+                // Marriage/Partnership progress
+                const marriageTotal = this.documentDefs.marriage.length;
+                const marriageComplete = this.documentDefs.marriage.filter(d => 
+                    this.hasDocument('marriage', d.id)
+                ).length;
+                const marriageProgress = marriageTotal > 0 ? (marriageComplete / marriageTotal) * 100 : 0;
+                
+                document.getElementById('marriage-progress').style.width = `${marriageProgress}%`;
+                document.getElementById('marriage-percentage').textContent = `${marriageProgress.toFixed(0)}%`;
+                document.getElementById('marriage-info').textContent = `${marriageComplete} documents uploaded`;
+
+                // Calculate master progress
+                this.updateMasterProgress({
+                    timeline: timelineProgress,
+                    core: coreProgress,
+                    medical: medicalProgress,
+                    evidence: evidenceProgress,
+                    name: nameProgress,
+                    marriage: marriageProgress,
+                    coreComplete,
+                    coreTotal,
+                    medicalComplete,
+                    medicalTotal,
+                    evidenceCount,
+                    evidenceTarget,
+                    nameComplete: nameComplete > 0 ? 1 : 0,
+                    marriageComplete
+                });
+            }
+
+            updateMasterProgress(progressData) {
+                // Calculate weighted master progress
+                // Core and Medical are required (40% weight)
+                // Evidence is required (40% weight)
+                // Timeline (10% weight)
+                // Name and Marriage are optional (10% weight)
+                
+                const requiredProgress = (progressData.core * 0.2) + (progressData.medical * 0.2) + (progressData.evidence * 0.4);
+                const timelineWeight = progressData.timeline * 0.1;
+                const optionalProgress = Math.max(progressData.name, progressData.marriage) * 0.1;
+                
+                const masterProgress = requiredProgress + timelineWeight + optionalProgress;
+                
+                document.getElementById('master-progress').style.width = `${masterProgress}%`;
+                document.getElementById('master-progress-text').textContent = `${masterProgress.toFixed(0)}%`;
+                
+                // Update details
+                const totalRequired = progressData.coreTotal + progressData.medicalTotal + progressData.evidenceTarget;
+                const totalComplete = progressData.coreComplete + progressData.medicalComplete + progressData.evidenceCount;
+                const optionalDocs = progressData.nameComplete + progressData.marriageComplete;
+                
+                document.getElementById('master-progress-details').innerHTML = `
+                    <strong>${totalComplete}</strong> of <strong>${totalRequired}</strong> required items completed
+                    ${optionalDocs > 0 ? ` • <strong>${optionalDocs}</strong> optional documents` : ''}
+                    • ${this.getQuarters().filter(q => this.isQuarterComplete(q)).length} of 8 quarters complete
+                `;
+            }
+
+            updateStats() {
+                // Total documents
+                const totalDocs = this.getTotalDocumentCount();
+                document.getElementById('total-documents').textContent = totalDocs;
+
+                // Days remaining
+                const now = new Date();
+                const daysRemaining = Math.ceil((this.targetDate - now) / (1000 * 60 * 60 * 24));
+                document.getElementById('days-remaining').textContent = Math.max(0, daysRemaining);
+
+                // Current quarter
+                const currentQuarter = this.getCurrentQuarterInfo();
+                document.getElementById('current-quarter').textContent = currentQuarter.name;
+
+                // Quarters complete
+                const quarters = this.getQuarters();
+                const completeQuarters = quarters.filter(q => this.isQuarterComplete(q)).length;
+                document.getElementById('quarters-complete').textContent = `${completeQuarters}/8`;
+            }
+
+            renderTimeline() {
+                const container = document.getElementById('timeline-grid');
+                const quarters = this.getQuarters();
+                
+                container.innerHTML = quarters.map(quarter => {
+                    const evidenceCount = this.getQuarterEvidenceCount(quarter.id);
+                    const isComplete = evidenceCount >= 2;
+                    const isCurrent = this.isCurrentQuarter(quarter);
+                    const isFuture = new Date() < quarter.start;
+                    
+                    let statusClass = '';
+                    let statusIcon = '⏳';
+                    
+                    if (isComplete) {
+                        statusClass = 'completed';
+                        statusIcon = '✅';
+                    } else if (isCurrent) {
+                        statusClass = 'current';
+                        statusIcon = '📍';
+                    } else if (isFuture) {
+                        statusClass = 'future';
+                        statusIcon = '🔮';
+                    }
+                    
+                    const progress = Math.min(100, (evidenceCount / 2) * 100);
+                    
+                    return `
+                        <div class="quarter-card ${statusClass}" onclick="openQuarterModal('${quarter.id}')">
+                            <div class="quarter-header">
+                                <div class="quarter-title">${quarter.name}</div>
+                                <div class="quarter-status">${statusIcon}</div>
+                            </div>
+                            <div class="quarter-dates">${this.formatDate(quarter.start)} - ${this.formatDate(quarter.end)}</div>
+                            <div class="quarter-progress">
+                                <div class="mini-progress-bar">
+                                    <div class="mini-progress-fill" style="width: ${progress}%"></div>
+                                </div>
+                            </div>
+                            <div class="quarter-stats">
+                                <span>${evidenceCount}/2 documents</span>
+                                <span>${progress.toFixed(0)}%</span>
+                            </div>
+                            <div class="quarter-action">Click to manage evidence →</div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            renderDocuments() {
+                ['core', 'medical', 'name', 'marriage'].forEach(category => {
+                    const container = document.getElementById(`docs-${category}`);
+                    const docs = this.documentDefs[category];
+                    
+                    container.innerHTML = docs.map(doc => {
+                        const hasDoc = this.hasDocument(category, doc.id);
+                        const files = this.getDocumentFiles(category, doc.id);
+                        const statusClass = hasDoc ? 'completed' : (doc.required ? 'required' : '');
+                        const statusText = hasDoc ? 'Completed' : (doc.required ? 'Required' : 'Optional');
+                        const statusIcon = hasDoc ? '✅' : (doc.required ? '⚠️' : '📋');
+                        
+                        return `
+                            <div class="document-item ${statusClass}">
+                                <div class="document-header">
+                                    <div class="document-title">${doc.title}</div>
+                                    <div class="document-status ${statusClass}">
+                                        <span>${statusIcon}</span>
+                                        <span>${statusText}</span>
+                                    </div>
+                                </div>
+                                <div class="document-description">${doc.description}</div>
+                                <div class="document-actions">
+                                    <button class="btn btn-primary" onclick="uploadCategoryDocument('${category}', '${doc.id}')">
+                                        <span>📤</span> Upload
+                                    </button>
+                                    ${files.length > 0 ? `
+                                        <button class="btn btn-success" onclick="viewDocumentFiles('${category}', '${doc.id}')">
+                                            <span>👁️</span> View (${files.length})
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                });
+            }
+
+            updateCategoryBadges() {
+                const categories = ['core', 'medical', 'name', 'marriage'];
+                
+                categories.forEach(category => {
+                    const completed = this.documentDefs[category].filter(d => 
+                        this.hasDocument(category, d.id)
+                    ).length;
+                    
+                    const badge = document.getElementById(`badge-${category}`);
+                    if (badge) {
+                        if (category === 'core' || category === 'medical') {
+                            const total = this.documentDefs[category].filter(d => d.required).length;
+                            badge.textContent = `${completed}/${total}`;
+                        } else if (category === 'name') {
+                            // Name change is complete if ANY document is uploaded
+                            badge.textContent = completed > 0 ? '✓' : '0';
+                        } else {
+                            badge.textContent = completed.toString();
+                        }
+                    }
+                });
+            }
+
+            // Quarter management
+            getQuarters() {
+                const quarters = [];
+                let current = new Date(this.startDate);
+                let id = 1;
+                
+                while (current < this.targetDate) {
+                    const end = new Date(current);
+                    end.setMonth(current.getMonth() + 3);
+                    
+                    quarters.push({
+                        id: `q${id}`,
+                        name: `Q${Math.ceil((current.getMonth() + 1) / 3)} ${current.getFullYear()}`,
+                        start: new Date(current),
+                        end: new Date(end)
+                    });
+                    
+                    current = end;
+                    id++;
+                }
+                
+                return quarters;
+            }
+
+            getCurrentQuarterInfo() {
+                const now = new Date();
+                const quarters = this.getQuarters();
+                return quarters.find(q => now >= q.start && now < q.end) || quarters[0];
+            }
+
+            isCurrentQuarter(quarter) {
+                const now = new Date();
+                return now >= quarter.start && now < quarter.end;
+            }
+
+            isQuarterComplete(quarter) {
+                return this.getQuarterEvidenceCount(quarter.id) >= 2;
+            }
+
+            getQuarterEvidenceCount(quarterId) {
+                const quarterData = this.data.quarters[quarterId];
+                return quarterData ? (quarterData.files || []).length : 0;
+            }
+
+            getTotalEvidenceCount() {
+                return Object.values(this.data.quarters).reduce((total, quarter) => {
+                    return total + (quarter.files || []).length;
+                }, 0);
+            }
+
+            // Document management
+            hasDocument(category, docId) {
+                return !!(this.data.documents[category][docId]?.files?.length);
+            }
+
+            getDocumentFiles(category, docId) {
+                return this.data.documents[category][docId]?.files || [];
+            }
+
+            getTotalDocumentCount() {
+                let count = 0;
+                
+                // Count category documents
+                Object.keys(this.data.documents).forEach(category => {
+                    Object.values(this.data.documents[category]).forEach(doc => {
+                        if (doc.files && doc.files.length > 0) {
+                            count += doc.files.length;
+                        }
+                    });
+                });
+                
+                // Count quarter evidence
+                count += this.getTotalEvidenceCount();
+                
+                return count;
+            }
+
+            // File handling
+            handleFileUpload(files) {
+                if (!this.currentQuarter) return;
+                
+                if (!this.data.quarters[this.currentQuarter]) {
+                    this.data.quarters[this.currentQuarter] = { files: [], notes: '' };
+                }
+                
+                const quarterData = this.data.quarters[this.currentQuarter];
+                
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        quarterData.files.push({
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            data: e.target.result,
+                            uploadDate: new Date().toISOString()
+                        });
+                        
+                        this.saveData();
+                        this.render();
+                        this.renderQuarterFiles();
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            renderQuarterFiles() {
+                if (!this.currentQuarter) return;
+                
+                const container = document.getElementById('file-list');
+                const quarterData = this.data.quarters[this.currentQuarter];
+                const files = quarterData?.files || [];
+                
+                if (files.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">No files uploaded yet</p>';
+                    return;
+                }
+                
+                container.innerHTML = '<h4>📁 Uploaded Evidence</h4>' + 
+                    files.map((file, index) => `
+                        <div class="file-item">
+                            <div class="file-info">
+                                <div class="file-icon">📄</div>
+                                <div class="file-details">
+                                    <div class="file-name">${file.name}</div>
+                                    <div class="file-meta">
+                                        ${this.formatFileSize(file.size)} • Uploaded ${this.formatDate(new Date(file.uploadDate))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="file-actions">
+                                <button class="btn btn-success" onclick="tracker.downloadFile('${this.currentQuarter}', ${index})">
+                                    Download
+                                </button>
+                                <button class="btn btn-danger" onclick="tracker.deleteFile('${this.currentQuarter}', ${index})">
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+            }
+
+            downloadFile(quarterId, fileIndex) {
+                const quarterData = this.data.quarters[quarterId];
+                if (!quarterData || !quarterData.files[fileIndex]) return;
+                
+                const file = quarterData.files[fileIndex];
+                const link = document.createElement('a');
+                link.href = file.data;
+                link.download = file.name;
+                link.click();
+            }
+
+            deleteFile(quarterId, fileIndex) {
+                if (!confirm('Are you sure you want to delete this file?')) return;
+                
+                const quarterData = this.data.quarters[quarterId];
+                if (!quarterData || !quarterData.files[fileIndex]) return;
+                
+                quarterData.files.splice(fileIndex, 1);
+                this.saveData();
+                this.render();
+                this.renderQuarterFiles();
+            }
+
+            saveQuarterNotes(notes) {
+                if (!this.currentQuarter) return;
+                
+                if (!this.data.quarters[this.currentQuarter]) {
+                    this.data.quarters[this.currentQuarter] = { files: [], notes: '' };
+                }
+                
+                this.data.quarters[this.currentQuarter].notes = notes;
+                this.saveData();
+            }
+
+            // Utility functions
+            formatDate(date) {
+                return date.toLocaleDateString('en-GB', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                });
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            // Export functions
+            exportProgress() {
+                const report = {
+                    exportDate: new Date().toISOString(),
+                    summary: {
+                        startDate: this.startDate,
+                        targetDate: this.targetDate,
+                        totalDocuments: this.getTotalDocumentCount(),
+                        evidenceCount: this.getTotalEvidenceCount(),
+                        quartersComplete: this.getQuarters().filter(q => this.isQuarterComplete(q)).length
+                    },
+                    quarters: {},
+                    documents: {}
+                };
+
+                // Add quarter summaries
+                this.getQuarters().forEach(quarter => {
+                    report.quarters[quarter.id] = {
+                        name: quarter.name,
+                        dateRange: `${this.formatDate(quarter.start)} - ${this.formatDate(quarter.end)}`,
+                        evidenceCount: this.getQuarterEvidenceCount(quarter.id),
+                        isComplete: this.isQuarterComplete(quarter)
+                    };
+                });
+
+                // Add document summaries
+                Object.keys(this.documentDefs).forEach(category => {
+                    report.documents[category] = this.documentDefs[category].map(doc => ({
+                        title: doc.title,
+                        required: doc.required,
+                        uploaded: this.hasDocument(category, doc.id)
+                    }));
+                });
+
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `grc-progress-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            exportBackup() {
+                const blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `grc-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            printChecklist() {
+                const printWindow = window.open('', '_blank');
+                const quarters = this.getQuarters();
+                
+                const html = `
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>GRC Application Checklist</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            h1, h2 { color: #333; }
+                            .section { margin-bottom: 30px; }
+                            .item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+                            .completed { background: #e8f5e9; }
+                            .required { background: #ffebee; }
+                            @media print { body { font-size: 12pt; } }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>GRC Application Checklist</h1>
+                        <p>Generated: ${new Date().toLocaleDateString()}</p>
+                        
+                        <div class="section">
+                            <h2>Evidence Timeline</h2>
+                            ${quarters.map(q => `
+                                <div class="item ${this.isQuarterComplete(q) ? 'completed' : ''}">
+                                    <strong>${q.name}</strong> (${this.formatDate(q.start)} - ${this.formatDate(q.end)})<br>
+                                    Evidence: ${this.getQuarterEvidenceCount(q.id)}/2 pieces
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="section">
+                            <h2>Required Documents</h2>
+                            ${Object.keys(this.documentDefs).map(category => `
+                                <h3>${category.charAt(0).toUpperCase() + category.slice(1)} Documents</h3>
+                                ${this.documentDefs[category].map(doc => `
+                                    <div class="item ${this.hasDocument(category, doc.id) ? 'completed' : (doc.required ? 'required' : '')}">
+                                        <strong>${doc.title}</strong><br>
+                                        ${doc.description}<br>
+                                        Status: ${this.hasDocument(category, doc.id) ? '✅ Uploaded' : (doc.required ? '⚠️ Required' : '📋 Optional')}
+                                    </div>
+                                `).join('')}
+                            `).join('')}
+                        </div>
+                    </body>
+                    </html>
+                `;
+                
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.print();
+            }
+        }
+
+        // Global instance
+        let tracker;
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            tracker = new GRCTracker();
+        });
+
+        // Global functions
+        function openQuarterModal(quarterId) {
+            const modal = document.getElementById('quarter-modal');
+            const quarters = tracker.getQuarters();
+            const quarter = quarters.find(q => q.id === quarterId);
+            
+            if (!quarter) return;
+            
+            tracker.currentQuarter = quarterId;
+            
+            // Update modal title
+            document.getElementById('modal-title').textContent = `${quarter.name} Evidence`;
+            
+            // Load existing notes
+            const quarterData = tracker.data.quarters[quarterId];
+            const notesTextarea = document.getElementById('quarter-notes');
+            notesTextarea.value = quarterData?.notes || '';
+            
+            // Render existing files
+            tracker.renderQuarterFiles();
+            
+            // Show modal
+            modal.style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('quarter-modal').style.display = 'none';
+            tracker.currentQuarter = null;
+        }
+
+        function switchView(view) {
+            const gridView = document.getElementById('timeline-grid');
+            const calendarView = document.getElementById('calendar-view');
+            const buttons = document.querySelectorAll('.view-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (view === 'grid') {
+                gridView.style.display = 'grid';
+                calendarView.style.display = 'none';
+                buttons[0].classList.add('active');
+            } else {
+                gridView.style.display = 'none';
+                calendarView.style.display = 'block';
+                buttons[1].classList.add('active');
+                renderCalendarView();
+            }
+        }
+
+        function renderCalendarView() {
+            const container = document.getElementById('calendar-view');
+            const quarters = tracker.getQuarters();
+            const months = [];
+            
+            // Generate all months in the 2-year period
+            let currentMonth = new Date(tracker.startDate);
+            while (currentMonth <= tracker.targetDate) {
+                months.push({
+                    date: new Date(currentMonth),
+                    year: currentMonth.getFullYear(),
+                    month: currentMonth.getMonth(),
+                    name: currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+                });
+                currentMonth.setMonth(currentMonth.getMonth() + 1);
+            }
+            
+            // Create calendar HTML
+            let calendarHTML = '<div class="calendar-container">';
+            
+            months.forEach(monthData => {
+                const daysInMonth = new Date(monthData.year, monthData.month + 1, 0).getDate();
+                const firstDay = new Date(monthData.year, monthData.month, 1).getDay();
+                const quarter = quarters.find(q => {
+                    const monthDate = new Date(monthData.year, monthData.month, 15);
+                    return monthDate >= q.start && monthDate < q.end;
+                });
+                
+                calendarHTML += `
+                    <div class="calendar-month">
+                        <div class="calendar-month-header">${monthData.name}</div>
+                        <div class="calendar-week">
+                            <div class="calendar-day-header">Sun</div>
+                            <div class="calendar-day-header">Mon</div>
+                            <div class="calendar-day-header">Tue</div>
+                            <div class="calendar-day-header">Wed</div>
+                            <div class="calendar-day-header">Thu</div>
+                            <div class="calendar-day-header">Fri</div>
+                            <div class="calendar-day-header">Sat</div>
+                        </div>
+                        <div class="calendar-week">
+                `;
+                
+                // Add empty cells for days before month starts
+                for (let i = 0; i < firstDay; i++) {
+                    calendarHTML += '<div class="calendar-day empty"></div>';
+                }
+                
+                // Add days of the month
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const date = new Date(monthData.year, monthData.month, day);
+                    const isToday = date.toDateString() === new Date().toDateString();
+                    const evidenceCount = quarter ? tracker.getQuarterEvidenceCount(quarter.id) : 0;
+                    
+                    calendarHTML += `
+                        <div class="calendar-day ${isToday ? 'today' : ''}" 
+                             ${quarter ? `onclick="openQuarterModal('${quarter.id}')"` : ''}>
+                            <div class="calendar-day-number">${day}</div>
+                            ${day === 15 && evidenceCount > 0 ? 
+                                `<div class="calendar-evidence-count">${evidenceCount}</div>` : ''}
+                        </div>
+                    `;
+                    
+                    // Start new week row if needed
+                    if ((firstDay + day) % 7 === 0 && day < daysInMonth) {
+                        calendarHTML += '</div><div class="calendar-week">';
+                    }
+                }
+                
+                calendarHTML += '</div></div>';
+            });
+            
+            calendarHTML += '</div>';
+            container.innerHTML = calendarHTML;
+        }
+
+        function importBackup(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate the data structure
+                    if (!importedData.quarters || !importedData.documents) {
+                        throw new Error('Invalid backup file format');
+                    }
+                    
+                    // Confirm before importing
+                    if (confirm('This will replace all your current data. Are you sure you want to import this backup?')) {
+                        tracker.data = importedData;
+                        tracker.saveData();
+                        tracker.render();
+                        
+                        alert('✅ Backup imported successfully!');
+                    }
+                } catch (error) {
+                    alert('❌ Error importing backup: ' + error.message);
+                }
+                
+                // Reset the input
+                input.value = '';
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ This will permanently delete all your data. Are you sure?')) {
+                if (confirm('⚠️ This action cannot be undone. Please confirm again.')) {
+                    tracker.data = {
+                        quarters: {},
+                        documents: {
+                            core: {},
+                            medical: {},
+                            name: {},
+                            marriage: {}
+                        },
+                        notes: {},
+                        settings: {
+                            startDate: '2023-12-01',
+                            targetDate: '2025-12-01'
+                        }
+                    };
+                    tracker.saveData();
+                    tracker.render();
+                    
+                    alert('✅ All data has been cleared.');
+                }
+            }
+        }
+
+        function switchCategory(category) {
+            // Update tabs
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(`tab-${category}`).classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.category-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`content-${category}`).classList.add('active');
+            
+            tracker.currentCategory = category;
+        }
+
+        function uploadCategoryDocument(category, docId) {
+            // Create temporary file input
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = '*/*';
+            
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files);
+                
+                if (!tracker.data.documents[category][docId]) {
+                    tracker.data.documents[category][docId] = { files: [] };
+                }
+                
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        tracker.data.documents[category][docId].files.push({
+                            name: file.name,
+                            size: file.size,
+                            type: file.type,
+                            data: event.target.result,
+                            uploadDate: new Date().toISOString()
+                        });
+                        
+                        tracker.saveData();
+                        tracker.render();
+                        
+                        // Show success message
+                        alert(`✅ ${file.name} uploaded successfully!`);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            };
+            
+            input.click();
+        }
+
+        function viewDocumentFiles(category, docId) {
+            const files = tracker.getDocumentFiles(category, docId);
+            if (files.length === 0) return;
+            
+            // For now, just download the first file
+            // In a full implementation, you'd show a list to choose from
+            const file = files[0];
+            const link = document.createElement('a');
+            link.href = file.data;
+            link.download = file.name;
+            link.click();
+        }
+
+        // Drag and drop handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('upload-area').classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('upload-area').classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('upload-area').classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                tracker.handleFileUpload(files);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                tracker.handleFileUpload(files);
+            }
+        }
+
+        // Modal close on outside click
+        window.onclick = (e) => {
+            const modal = document.getElementById('quarter-modal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+
+        // Export functions to global scope
+        window.openQuarterModal = openQuarterModal;
+        window.closeModal = closeModal;
+        window.switchCategory = switchCategory;
+        window.uploadCategoryDocument = uploadCategoryDocument;
+        window.viewDocumentFiles = viewDocumentFiles;
+        window.handleDragOver = handleDragOver;
+        window.handleDragLeave = handleDragLeave;
+        window.handleDrop = handleDrop;
+        window.handleFileSelect = handleFileSelect;
+        window.exportProgress = () => tracker.exportProgress();
+        window.exportBackup = () => tracker.exportBackup();
+        window.printChecklist = () => tracker.printChecklist();
+        window.importBackup = importBackup;
+        window.clearAllData = clearAllData;
+    </script>
+</body>
+</html>
