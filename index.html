@@ -24,10 +24,11 @@
             padding: 20px;
         }
 
+        /* Combined Header with Progress */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 30px 20px;
+            padding: 30px 20px 25px;
             border-radius: 10px;
             margin-bottom: 30px;
             text-align: center;
@@ -36,43 +37,38 @@
 
         .header h1 {
             font-size: 2.5rem;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
-        .header p {
+        .header .subtitle {
             font-size: 1.1rem;
             opacity: 0.9;
+            margin-bottom: 25px;
         }
 
-        /* Master Progress Bar */
-        .master-progress {
-            background: white;
-            padding: 25px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .header-progress {
+            margin-top: 25px;
         }
 
-        .master-progress h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            text-align: center;
-            font-size: 1.8rem;
+        .header-progress h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            opacity: 0.95;
         }
 
         .master-progress-bar {
             width: 100%;
-            height: 50px;
-            background-color: #e0e0e0;
+            height: 45px;
+            background-color: rgba(255,255,255,0.2);
             border-radius: 25px;
             overflow: hidden;
-            margin-bottom: 20px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .master-progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+            background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7), rgba(255,255,255,0.9));
             background-size: 200% 100%;
             animation: shimmer 3s ease-in-out infinite;
             transition: width 0.8s ease;
@@ -88,15 +84,14 @@
         }
 
         .master-progress-text {
-            color: white;
+            color: #333;
             font-weight: bold;
-            font-size: 1.5rem;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            font-size: 1.4rem;
+            text-shadow: none;
         }
 
         .master-progress-details {
-            text-align: center;
-            color: #666;
+            color: rgba(255,255,255,0.9);
             font-size: 0.95rem;
         }
 
@@ -801,18 +796,18 @@
     <div class="container">
         <div class="header">
             <h1>🏳️‍⚧️ UK GRC Document Tracker</h1>
-            <p>Organize and track your Gender Recognition Certificate application</p>
-        </div>
-
-        <div class="master-progress">
-            <h2>Overall Application Progress</h2>
-            <div class="master-progress-bar">
-                <div class="master-progress-fill" id="master-progress" style="width: 0%">
-                    <span class="master-progress-text" id="master-progress-text">0%</span>
+            <p class="subtitle">Organize and track your Gender Recognition Certificate application</p>
+            
+            <div class="header-progress">
+                <h2>Overall Application Progress</h2>
+                <div class="master-progress-bar">
+                    <div class="master-progress-fill" id="master-progress" style="width: 0%">
+                        <span class="master-progress-text" id="master-progress-text">0%</span>
+                    </div>
                 </div>
-            </div>
-            <div class="master-progress-details" id="master-progress-details">
-                Loading progress...
+                <div class="master-progress-details" id="master-progress-details">
+                    Loading progress...
+                </div>
             </div>
         </div>
 
@@ -1120,15 +1115,15 @@
                     ],
                     marriage: [
                         {
+                            id: 'spouse-declaration',
+                            title: 'Spouse Statutory Declaration',
+                            description: 'Spouse\'s consent to remain married (required if married/partnered)',
+                            required: true
+                        },
+                        {
                             id: 'marriage-certificate',
                             title: 'Marriage Certificate',
                             description: 'Certificate of current marriage',
-                            required: false
-                        },
-                        {
-                            id: 'spouse-declaration',
-                            title: 'Spouse Statutory Declaration',
-                            description: 'Spouse\'s consent to remain married',
                             required: false
                         },
                         {
@@ -1226,16 +1221,12 @@
                 document.getElementById('name-info').textContent = nameComplete > 0 ? 
                     `✓ Name change documented` : `No name change documents`;
 
-                // Marriage/Partnership progress
-                const marriageTotal = this.documentDefs.marriage.length;
-                const marriageComplete = this.documentDefs.marriage.filter(d => 
-                    this.hasDocument('marriage', d.id)
-                ).length;
-                const marriageProgress = marriageTotal > 0 ? (marriageComplete / marriageTotal) * 100 : 0;
+                // Marriage/Partnership progress - Updated logic
+                const marriageProgress = this.getMarriageProgress();
                 
-                document.getElementById('marriage-progress').style.width = `${marriageProgress}%`;
-                document.getElementById('marriage-percentage').textContent = `${marriageProgress.toFixed(0)}%`;
-                document.getElementById('marriage-info').textContent = `${marriageComplete} documents uploaded`;
+                document.getElementById('marriage-progress').style.width = `${marriageProgress.percentage}%`;
+                document.getElementById('marriage-percentage').textContent = `${marriageProgress.percentage}%`;
+                document.getElementById('marriage-info').textContent = marriageProgress.info;
 
                 // Calculate master progress
                 this.updateMasterProgress({
@@ -1244,7 +1235,7 @@
                     medical: medicalProgress,
                     evidence: evidenceProgress,
                     name: nameProgress,
-                    marriage: marriageProgress,
+                    marriage: marriageProgress.percentage,
                     coreComplete,
                     coreTotal,
                     medicalComplete,
@@ -1252,8 +1243,35 @@
                     evidenceCount,
                     evidenceTarget,
                     nameComplete: nameComplete > 0 ? 1 : 0,
-                    marriageComplete
+                    marriageComplete: marriageProgress.complete ? 1 : 0
                 });
+            }
+
+            getMarriageProgress() {
+                const hasSpouseDeclaration = this.hasDocument('marriage', 'spouse-declaration');
+                const hasMarriageCert = this.hasDocument('marriage', 'marriage-certificate');
+                const hasCivilPartnershipCert = this.hasDocument('marriage', 'civil-partnership-certificate');
+                
+                // Complete = spouse declaration + (marriage cert OR civil partnership cert)
+                const hasRequiredCertificate = hasMarriageCert || hasCivilPartnershipCert;
+                const isComplete = hasSpouseDeclaration && hasRequiredCertificate;
+                
+                let info = '';
+                if (isComplete) {
+                    info = '✓ Marriage/partnership documented';
+                } else if (hasSpouseDeclaration && !hasRequiredCertificate) {
+                    info = 'Need marriage or civil partnership certificate';
+                } else if (!hasSpouseDeclaration && hasRequiredCertificate) {
+                    info = 'Need spouse statutory declaration';
+                } else {
+                    info = 'No marriage/partnership documents';
+                }
+                
+                return {
+                    percentage: isComplete ? 100 : 0,
+                    complete: isComplete,
+                    info: info
+                };
             }
 
             updateMasterProgress(progressData) {
@@ -1395,20 +1413,22 @@
                 const categories = ['core', 'medical', 'name', 'marriage'];
                 
                 categories.forEach(category => {
-                    const completed = this.documentDefs[category].filter(d => 
-                        this.hasDocument(category, d.id)
-                    ).length;
-                    
                     const badge = document.getElementById(`badge-${category}`);
                     if (badge) {
                         if (category === 'core' || category === 'medical') {
+                            const completed = this.documentDefs[category].filter(d => 
+                                this.hasDocument(category, d.id)
+                            ).length;
                             const total = this.documentDefs[category].filter(d => d.required).length;
                             badge.textContent = `${completed}/${total}`;
                         } else if (category === 'name') {
-                            // Name change is complete if ANY document is uploaded
+                            const completed = this.documentDefs[category].filter(d => 
+                                this.hasDocument(category, d.id)
+                            ).length;
                             badge.textContent = completed > 0 ? '✓' : '0';
-                        } else {
-                            badge.textContent = completed.toString();
+                        } else if (category === 'marriage') {
+                            const marriageProgress = this.getMarriageProgress();
+                            badge.textContent = marriageProgress.complete ? '✓' : '0';
                         }
                     }
                 });
@@ -1754,159 +1774,6 @@
             tracker.currentQuarter = null;
         }
 
-        function switchView(view) {
-            const gridView = document.getElementById('timeline-grid');
-            const calendarView = document.getElementById('calendar-view');
-            const buttons = document.querySelectorAll('.view-btn');
-            
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            if (view === 'grid') {
-                gridView.style.display = 'grid';
-                calendarView.style.display = 'none';
-                buttons[0].classList.add('active');
-            } else {
-                gridView.style.display = 'none';
-                calendarView.style.display = 'block';
-                buttons[1].classList.add('active');
-                renderCalendarView();
-            }
-        }
-
-        function renderCalendarView() {
-            const container = document.getElementById('calendar-view');
-            const quarters = tracker.getQuarters();
-            const months = [];
-            
-            // Generate all months in the 2-year period
-            let currentMonth = new Date(tracker.startDate);
-            while (currentMonth <= tracker.targetDate) {
-                months.push({
-                    date: new Date(currentMonth),
-                    year: currentMonth.getFullYear(),
-                    month: currentMonth.getMonth(),
-                    name: currentMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
-                });
-                currentMonth.setMonth(currentMonth.getMonth() + 1);
-            }
-            
-            // Create calendar HTML
-            let calendarHTML = '<div class="calendar-container">';
-            
-            months.forEach(monthData => {
-                const daysInMonth = new Date(monthData.year, monthData.month + 1, 0).getDate();
-                const firstDay = new Date(monthData.year, monthData.month, 1).getDay();
-                const quarter = quarters.find(q => {
-                    const monthDate = new Date(monthData.year, monthData.month, 15);
-                    return monthDate >= q.start && monthDate < q.end;
-                });
-                
-                calendarHTML += `
-                    <div class="calendar-month">
-                        <div class="calendar-month-header">${monthData.name}</div>
-                        <div class="calendar-week">
-                            <div class="calendar-day-header">Sun</div>
-                            <div class="calendar-day-header">Mon</div>
-                            <div class="calendar-day-header">Tue</div>
-                            <div class="calendar-day-header">Wed</div>
-                            <div class="calendar-day-header">Thu</div>
-                            <div class="calendar-day-header">Fri</div>
-                            <div class="calendar-day-header">Sat</div>
-                        </div>
-                        <div class="calendar-week">
-                `;
-                
-                // Add empty cells for days before month starts
-                for (let i = 0; i < firstDay; i++) {
-                    calendarHTML += '<div class="calendar-day empty"></div>';
-                }
-                
-                // Add days of the month
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const date = new Date(monthData.year, monthData.month, day);
-                    const isToday = date.toDateString() === new Date().toDateString();
-                    const evidenceCount = quarter ? tracker.getQuarterEvidenceCount(quarter.id) : 0;
-                    
-                    calendarHTML += `
-                        <div class="calendar-day ${isToday ? 'today' : ''}" 
-                             ${quarter ? `onclick="openQuarterModal('${quarter.id}')"` : ''}>
-                            <div class="calendar-day-number">${day}</div>
-                            ${day === 15 && evidenceCount > 0 ? 
-                                `<div class="calendar-evidence-count">${evidenceCount}</div>` : ''}
-                        </div>
-                    `;
-                    
-                    // Start new week row if needed
-                    if ((firstDay + day) % 7 === 0 && day < daysInMonth) {
-                        calendarHTML += '</div><div class="calendar-week">';
-                    }
-                }
-                
-                calendarHTML += '</div></div>';
-            });
-            
-            calendarHTML += '</div>';
-            container.innerHTML = calendarHTML;
-        }
-
-        function importBackup(input) {
-            const file = input.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const importedData = JSON.parse(e.target.result);
-                    
-                    // Validate the data structure
-                    if (!importedData.quarters || !importedData.documents) {
-                        throw new Error('Invalid backup file format');
-                    }
-                    
-                    // Confirm before importing
-                    if (confirm('This will replace all your current data. Are you sure you want to import this backup?')) {
-                        tracker.data = importedData;
-                        tracker.saveData();
-                        tracker.render();
-                        
-                        alert('✅ Backup imported successfully!');
-                    }
-                } catch (error) {
-                    alert('❌ Error importing backup: ' + error.message);
-                }
-                
-                // Reset the input
-                input.value = '';
-            };
-            
-            reader.readAsText(file);
-        }
-
-        function clearAllData() {
-            if (confirm('⚠️ This will permanently delete all your data. Are you sure?')) {
-                if (confirm('⚠️ This action cannot be undone. Please confirm again.')) {
-                    tracker.data = {
-                        quarters: {},
-                        documents: {
-                            core: {},
-                            medical: {},
-                            name: {},
-                            marriage: {}
-                        },
-                        notes: {},
-                        settings: {
-                            startDate: '2023-12-01',
-                            targetDate: '2025-12-01'
-                        }
-                    };
-                    tracker.saveData();
-                    tracker.render();
-                    
-                    alert('✅ All data has been cleared.');
-                }
-            }
-        }
-
         function switchCategory(category) {
             // Update tabs
             document.querySelectorAll('.category-tab').forEach(tab => {
@@ -2002,6 +1869,64 @@
             const files = e.target.files;
             if (files.length > 0) {
                 tracker.handleFileUpload(files);
+            }
+        }
+
+        function importBackup(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate the data structure
+                    if (!importedData.quarters || !importedData.documents) {
+                        throw new Error('Invalid backup file format');
+                    }
+                    
+                    // Confirm before importing
+                    if (confirm('This will replace all your current data. Are you sure you want to import this backup?')) {
+                        tracker.data = importedData;
+                        tracker.saveData();
+                        tracker.render();
+                        
+                        alert('✅ Backup imported successfully!');
+                    }
+                } catch (error) {
+                    alert('❌ Error importing backup: ' + error.message);
+                }
+                
+                // Reset the input
+                input.value = '';
+            };
+            
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ This will permanently delete all your data. Are you sure?')) {
+                if (confirm('⚠️ This action cannot be undone. Please confirm again.')) {
+                    tracker.data = {
+                        quarters: {},
+                        documents: {
+                            core: {},
+                            medical: {},
+                            name: {},
+                            marriage: {}
+                        },
+                        notes: {},
+                        settings: {
+                            startDate: '2023-12-01',
+                            targetDate: '2025-12-01'
+                        }
+                    };
+                    tracker.saveData();
+                    tracker.render();
+                    
+                    alert('✅ All data has been cleared.');
+                }
             }
         }
 
