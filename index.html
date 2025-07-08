@@ -683,7 +683,15 @@
             }
 
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.5rem;
+            }
+
+            .header .subtitle {
+                font-size: 0.9rem;
+            }
+
+            .header-progress h2 {
+                font-size: 1rem;
             }
 
             .timeline-grid {
@@ -993,6 +1001,56 @@
                 </div>
             </div>
         </div>
+
+        <div class="export-section">
+            <h2>⚙️ Timeline Settings</h2>
+            <p style="margin-bottom: 20px; color: #666;">Customize your 2-year evidence collection timeline. The start date will automatically be set to 2 years before your target date.</p>
+            
+            <div style="max-width: 400px; margin: 0 auto;">
+                <div style="margin-bottom: 20px;">
+                    <label for="target-date" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        🎯 Target Application Date
+                    </label>
+                    <input 
+                        type="date" 
+                        id="target-date" 
+                        value="2025-12-01"
+                        min="2024-01-01"
+                        max="2030-12-31"
+                        style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1rem;"
+                        onchange="updateTargetDate(this.value)"
+                    >
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        When you plan to submit your GRC application
+                    </small>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        📅 Evidence Collection Period
+                    </label>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>Start:</strong> <span id="calculated-start-date">1 Dec 2023</span>
+                            </div>
+                            <div style="color: #667eea; font-size: 1.2rem;">→</div>
+                            <div>
+                                <strong>End:</strong> <span id="calculated-end-date">1 Dec 2025</span>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 10px; color: #666; font-size: 0.9rem;">
+                            <span id="timeline-duration">24 months</span> evidence collection
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <span>💡</span>
+                    <span>Your existing evidence data will be preserved when changing dates. Quarters will be remapped to the new timeline.</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Quarter Modal -->
@@ -1029,11 +1087,10 @@
                 this.storageKey = 'grc_tracker_v2';
                 this.currentQuarter = null;
                 this.currentCategory = 'core';
-                this.startDate = new Date('2023-12-01');
-                this.targetDate = new Date('2025-12-01');
                 
                 this.initializeData();
                 this.setupEventHandlers();
+                this.updateDatesFromSettings();
                 this.render();
                 
                 // Auto-save notes
@@ -1052,10 +1109,17 @@
                     },
                     notes: {},
                     settings: {
-                        startDate: '2023-12-01',
                         targetDate: '2025-12-01'
                     }
                 };
+
+                // Ensure settings exist
+                if (!this.data.settings) {
+                    this.data.settings = { targetDate: '2025-12-01' };
+                }
+                if (!this.data.settings.targetDate) {
+                    this.data.settings.targetDate = '2025-12-01';
+                }
 
                 // Document definitions
                 this.documentDefs = {
@@ -1155,6 +1219,61 @@
                 }
             }
 
+            updateDatesFromSettings() {
+                // Calculate start date as 2 years before target date
+                this.targetDate = new Date(this.data.settings.targetDate);
+                this.startDate = new Date(this.targetDate);
+                this.startDate.setFullYear(this.startDate.getFullYear() - 2);
+                
+                // Update UI
+                this.updateDateDisplay();
+            }
+
+            updateDateDisplay() {
+                const targetInput = document.getElementById('target-date');
+                const startSpan = document.getElementById('calculated-start-date');
+                const endSpan = document.getElementById('calculated-end-date');
+                const durationSpan = document.getElementById('timeline-duration');
+                
+                if (targetInput) {
+                    targetInput.value = this.data.settings.targetDate;
+                }
+                
+                if (startSpan) {
+                    startSpan.textContent = this.formatDate(this.startDate);
+                }
+                
+                if (endSpan) {
+                    endSpan.textContent = this.formatDate(this.targetDate);
+                }
+                
+                if (durationSpan) {
+                    const months = Math.round((this.targetDate - this.startDate) / (1000 * 60 * 60 * 24 * 30.44));
+                    durationSpan.textContent = `${months} months`;
+                }
+            }
+
+            updateTargetDate(dateString) {
+                // Validate date
+                const newDate = new Date(dateString);
+                const minDate = new Date('2024-01-01');
+                const maxDate = new Date('2030-12-31');
+                
+                if (newDate < minDate || newDate > maxDate) {
+                    alert('Please select a date between 2024 and 2030');
+                    document.getElementById('target-date').value = this.data.settings.targetDate;
+                    return;
+                }
+                
+                // Update settings
+                this.data.settings.targetDate = dateString;
+                this.saveData();
+                
+                // Recalculate dates and update display
+                this.updateDatesFromSettings();
+                this.render();
+            }
+
             saveData() {
                 localStorage.setItem(this.storageKey, JSON.stringify(this.data));
             }
@@ -1165,6 +1284,7 @@
                 this.renderTimeline();
                 this.renderDocuments();
                 this.updateCategoryBadges();
+                this.updateDateDisplay();
             }
 
             updateProgress() {
@@ -1631,9 +1751,12 @@
             exportProgress() {
                 const report = {
                     exportDate: new Date().toISOString(),
+                    timeline: {
+                        startDate: this.startDate.toISOString(),
+                        targetDate: this.targetDate.toISOString(),
+                        customTargetDate: this.data.settings.targetDate
+                    },
                     summary: {
-                        startDate: this.startDate,
-                        targetDate: this.targetDate,
                         totalDocuments: this.getTotalDocumentCount(),
                         evidenceCount: this.getTotalEvidenceCount(),
                         quartersComplete: this.getQuarters().filter(q => this.isQuarterComplete(q)).length
@@ -1886,10 +2009,19 @@
                         throw new Error('Invalid backup file format');
                     }
                     
+                    // Ensure settings exist and have targetDate
+                    if (!importedData.settings) {
+                        importedData.settings = { targetDate: '2025-12-01' };
+                    }
+                    if (!importedData.settings.targetDate) {
+                        importedData.settings.targetDate = '2025-12-01';
+                    }
+                    
                     // Confirm before importing
                     if (confirm('This will replace all your current data. Are you sure you want to import this backup?')) {
                         tracker.data = importedData;
                         tracker.saveData();
+                        tracker.updateDatesFromSettings();
                         tracker.render();
                         
                         alert('✅ Backup imported successfully!');
@@ -1905,9 +2037,16 @@
             reader.readAsText(file);
         }
 
+        function updateTargetDate(dateString) {
+            tracker.updateTargetDate(dateString);
+        }
+
         function clearAllData() {
             if (confirm('⚠️ This will permanently delete all your data. Are you sure?')) {
                 if (confirm('⚠️ This action cannot be undone. Please confirm again.')) {
+                    // Preserve the current target date setting
+                    const currentTargetDate = tracker.data.settings.targetDate;
+                    
                     tracker.data = {
                         quarters: {},
                         documents: {
@@ -1918,11 +2057,11 @@
                         },
                         notes: {},
                         settings: {
-                            startDate: '2023-12-01',
-                            targetDate: '2025-12-01'
+                            targetDate: currentTargetDate
                         }
                     };
                     tracker.saveData();
+                    tracker.updateDatesFromSettings();
                     tracker.render();
                     
                     alert('✅ All data has been cleared.');
