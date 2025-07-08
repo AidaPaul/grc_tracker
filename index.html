@@ -1663,6 +1663,9 @@
                                         <button class="btn btn-success" onclick="viewDocumentFiles('${category}', '${doc.id}')">
                                             <span>👁️</span> View (${files.length})
                                         </button>
+                                        <button class="btn btn-danger" onclick="deleteCategoryDocument('${category}', '${doc.id}')">
+                                            <span>🗑️</span> Delete
+                                        </button>
                                     ` : ''}
                                 </div>
                             </div>
@@ -2117,6 +2120,58 @@
             link.click();
         }
 
+        function deleteCategoryDocument(category, docId) {
+            const files = tracker.getDocumentFiles(category, docId);
+            if (files.length === 0) return;
+            
+            const docTitle = tracker.documentDefs[category].find(d => d.id === docId)?.title || 'document';
+            
+            if (files.length === 1) {
+                // Single file - simple confirmation
+                if (confirm(`⚠️ Are you sure you want to delete the uploaded ${docTitle}?\n\nThis action cannot be undone.`)) {
+                    delete tracker.data.documents[category][docId];
+                    tracker.saveData();
+                    tracker.render();
+                    alert(`✅ ${docTitle} deleted successfully.`);
+                }
+            } else {
+                // Multiple files - show list to choose from
+                let fileList = files.map((file, index) => `${index + 1}. ${file.name}`).join('\n');
+                let choice = prompt(`Multiple files found for ${docTitle}:\n\n${fileList}\n\nEnter the number of the file to delete (1-${files.length}), or type "ALL" to delete all files:`);
+                
+                if (choice === null) return; // User cancelled
+                
+                if (choice.toUpperCase() === 'ALL') {
+                    if (confirm(`⚠️ Are you sure you want to delete ALL ${files.length} files for ${docTitle}?\n\nThis action cannot be undone.`)) {
+                        delete tracker.data.documents[category][docId];
+                        tracker.saveData();
+                        tracker.render();
+                        alert(`✅ All files for ${docTitle} deleted successfully.`);
+                    }
+                } else {
+                    const fileIndex = parseInt(choice) - 1;
+                    if (isNaN(fileIndex) || fileIndex < 0 || fileIndex >= files.length) {
+                        alert('❌ Invalid file number. Please try again.');
+                        return;
+                    }
+                    
+                    const fileName = files[fileIndex].name;
+                    if (confirm(`⚠️ Are you sure you want to delete "${fileName}"?\n\nThis action cannot be undone.`)) {
+                        tracker.data.documents[category][docId].files.splice(fileIndex, 1);
+                        
+                        // If no files left, remove the entire document entry
+                        if (tracker.data.documents[category][docId].files.length === 0) {
+                            delete tracker.data.documents[category][docId];
+                        }
+                        
+                        tracker.saveData();
+                        tracker.render();
+                        alert(`✅ "${fileName}" deleted successfully.`);
+                    }
+                }
+            }
+        }
+
         // Drag and drop handlers
         function handleDragOver(e) {
             e.preventDefault();
@@ -2236,6 +2291,7 @@
         window.switchCategory = switchCategory;
         window.uploadCategoryDocument = uploadCategoryDocument;
         window.viewDocumentFiles = viewDocumentFiles;
+        window.deleteCategoryDocument = deleteCategoryDocument;
         window.handleDragOver = handleDragOver;
         window.handleDragLeave = handleDragLeave;
         window.handleDrop = handleDrop;
