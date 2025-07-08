@@ -161,6 +161,23 @@
             background: linear-gradient(90deg, #28a745, #218838);
         }
 
+        .progress-fill.eligible {
+            background: linear-gradient(90deg, #28a745, #20c997);
+            animation: celebrate 3s ease-in-out infinite;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { 
+                background: linear-gradient(90deg, #28a745, #20c997);
+                transform: scale(1);
+            }
+            50% { 
+                background: linear-gradient(90deg, #20c997, #17a2b8);
+                transform: scale(1.02);
+            }
+        }
+        }
+
         /* Stats Cards */
         .stats-overview {
             background: white;
@@ -804,7 +821,7 @@
     <div class="container">
         <div class="header">
             <h1>🏳️‍⚧️ UK GRC Document Tracker</h1>
-            <p class="subtitle">Organize and track your Gender Recognition Certificate application</p>
+            <p class="subtitle">Track your evidence collection during the mandatory waiting period</p>
             
             <div class="header-progress">
                 <h2>Overall Application Progress</h2>
@@ -821,12 +838,12 @@
 
         <div class="dashboard-grid">
             <div class="progress-overview">
-                <h2>📊 Overall Progress</h2>
+                <h2 id="progress-overview-title">📊 Overall Progress</h2>
                 
                 <div class="progress-item">
                     <div class="progress-label">
-                        <span>Timeline Progress</span>
-                        <span id="timeline-percentage">0%</span>
+                        <span>Time to Application</span>
+                        <span id="timeline-countdown">Calculating...</span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="timeline-progress" style="width: 0%"></div>
@@ -912,9 +929,13 @@
                 </div>
 
                 <div class="alert alert-info" style="margin-top: 20px;">
-                    <span>💡</span>
-                    <span>Click on any quarter below to manage its evidence documents</span>
+                    <span>💙</span>
+                    <span>Every piece of evidence you collect brings you closer to your goal. You're doing amazingly! 🏳️‍⚧️</span>
                 </div>
+                
+                <p style="text-align: center; color: #666; font-size: 0.9rem; margin-top: 10px;">
+                    <em>💡 Tip: Click on any quarter below to manage its evidence documents</em>
+                </p>
             </div>
         </div>
 
@@ -1004,12 +1025,12 @@
 
         <div class="export-section">
             <h2>⚙️ Timeline Settings</h2>
-            <p style="margin-bottom: 20px; color: #666;">Customize your 2-year evidence collection timeline. The start date will automatically be set to 2 years before your target date.</p>
+            <p style="margin-bottom: 20px; color: #666;">Set your earliest application date (2 years from when you started living in your acquired gender). The evidence collection period will automatically be calculated as the 2 years leading up to this date.</p>
             
             <div style="max-width: 400px; margin: 0 auto;">
                 <div style="margin-bottom: 20px;">
                     <label for="target-date" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-                        🎯 Target Application Date
+                        🎯 Earliest Application Date
                     </label>
                     <input 
                         type="date" 
@@ -1021,7 +1042,7 @@
                         onchange="updateTargetDate(this.value)"
                     >
                     <small style="color: #666; display: block; margin-top: 5px;">
-                        When you plan to submit your GRC application
+                        The earliest date you can submit your GRC application (2 years from when you began living in your acquired gender)
                     </small>
                 </div>
                 
@@ -1046,9 +1067,13 @@
                 </div>
 
                 <div class="alert alert-info">
-                    <span>💡</span>
-                    <span>Your existing evidence data will be preserved when changing dates. Quarters will be remapped to the new timeline.</span>
+                    <span>💙</span>
+                    <span>The UK's 2-year wait requirement is unjust, but this tracker helps you make the most of that time by organizing your evidence collection. You've got this! 🏳️‍⚧️</span>
                 </div>
+                
+                <small style="color: #666; text-align: center; display: block; margin-top: 15px;">
+                    <em>Note: Your existing evidence data will be preserved when changing dates. Quarters will be remapped to the new timeline.</em>
+                </small>
             </div>
         </div>
     </div>
@@ -1287,17 +1312,121 @@
                 this.updateDateDisplay();
             }
 
+            // New method to calculate and format time remaining
+            calculateTimeRemaining() {
+                const now = new Date();
+                const diffMs = this.targetDate - now;
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 0) {
+                    // Past application date - celebrate being eligible!
+                    const eligibleDays = Math.abs(diffDays);
+                    if (eligibleDays === 1) {
+                        return { text: '🎉 Eligible to apply! (1 day past wait period)', eligible: true };
+                    } else if (eligibleDays < 30) {
+                        return { text: `🎉 Eligible to apply! (${eligibleDays} days past wait period)`, eligible: true };
+                    } else if (eligibleDays < 365) {
+                        const eligibleMonths = Math.floor(eligibleDays / 30.44);
+                        const remainingDays = Math.floor(eligibleDays % 30.44);
+                        if (eligibleMonths === 1 && remainingDays === 0) {
+                            return { text: '🎉 Eligible to apply! (1 month past wait period)', eligible: true };
+                        } else if (eligibleMonths === 1) {
+                            return { text: `🎉 Eligible to apply! (1 month, ${remainingDays} days past wait period)`, eligible: true };
+                        } else if (remainingDays === 0) {
+                            return { text: `🎉 Eligible to apply! (${eligibleMonths} months past wait period)`, eligible: true };
+                        } else {
+                            return { text: `🎉 Eligible to apply! (${eligibleMonths} months, ${remainingDays} days past wait period)`, eligible: true };
+                        }
+                    } else {
+                        const eligibleYears = Math.floor(eligibleDays / 365.25);
+                        const remainingMonths = Math.floor((eligibleDays % 365.25) / 30.44);
+                        if (eligibleYears === 1 && remainingMonths === 0) {
+                            return { text: '🎉 Eligible to apply! (1 year past wait period)', eligible: true };
+                        } else if (eligibleYears === 1) {
+                            return { text: `🎉 Eligible to apply! (1 year, ${remainingMonths} months past wait period)`, eligible: true };
+                        } else if (remainingMonths === 0) {
+                            return { text: `🎉 Eligible to apply! (${eligibleYears} years past wait period)`, eligible: true };
+                        } else {
+                            return { text: `🎉 Eligible to apply! (${eligibleYears} years, ${remainingMonths} months past wait period)`, eligible: true };
+                        }
+                    }
+                } else if (diffDays === 0) {
+                    return { text: '🎉 Wait period ends today - you can apply!', eligible: true };
+                } else if (diffDays === 1) {
+                    return { text: '1 day left in mandatory wait period', urgent: true };
+                } else if (diffDays < 30) {
+                    return { text: `${diffDays} days left in mandatory wait period`, urgent: diffDays <= 7 };
+                } else if (diffDays < 365) {
+                    const months = Math.floor(diffDays / 30.44);
+                    const remainingDays = Math.floor(diffDays % 30.44);
+                    if (months === 1 && remainingDays === 0) {
+                        return { text: '1 month left in mandatory wait period', urgent: false };
+                    } else if (months === 1) {
+                        return { text: `1 month, ${remainingDays} days left in mandatory wait period`, urgent: false };
+                    } else if (remainingDays === 0) {
+                        return { text: `${months} months left in mandatory wait period`, urgent: false };
+                    } else {
+                        return { text: `${months} months, ${remainingDays} days left in mandatory wait period`, urgent: false };
+                    }
+                } else {
+                    const years = Math.floor(diffDays / 365.25);
+                    const remainingMonths = Math.floor((diffDays % 365.25) / 30.44);
+                    if (years === 1 && remainingMonths === 0) {
+                        return { text: '1 year left in mandatory wait period', urgent: false };
+                    } else if (years === 1) {
+                        return { text: `1 year, ${remainingMonths} months left in mandatory wait period`, urgent: false };
+                    } else if (remainingMonths === 0) {
+                        return { text: `${years} years left in mandatory wait period`, urgent: false };
+                    } else {
+                        return { text: `${years} years, ${remainingMonths} months left in mandatory wait period`, urgent: false };
+                    }
+                }
+            }
+
             updateProgress() {
-                // Timeline progress
+                // Timeline progress - keep the visual bar but update the text
                 const now = new Date();
                 const totalDays = (this.targetDate - this.startDate) / (1000 * 60 * 60 * 24);
                 const elapsedDays = (now - this.startDate) / (1000 * 60 * 60 * 24);
                 const timelineProgress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
                 
-                document.getElementById('timeline-progress').style.width = `${timelineProgress}%`;
-                document.getElementById('timeline-percentage').textContent = `${timelineProgress.toFixed(1)}%`;
+                // Calculate time remaining
+                const timeRemaining = this.calculateTimeRemaining();
+                
+                const progressBar = document.getElementById('timeline-progress');
+                progressBar.style.width = `${timelineProgress}%`;
+                
+                // Update progress bar styling based on urgency
+                progressBar.classList.remove('overdue', 'danger', 'warning', 'eligible');
+                if (timeRemaining.eligible) {
+                    progressBar.classList.add('eligible');
+                } else if (timeRemaining.urgent) {
+                    progressBar.classList.add('danger');
+                } else if (timelineProgress > 75) {
+                    progressBar.classList.add('warning');
+                }
+                
+                document.getElementById('timeline-countdown').textContent = timeRemaining.text;
                 document.getElementById('timeline-info').textContent = 
-                    `Started ${this.formatDate(this.startDate)} • Target ${this.formatDate(this.targetDate)}`;
+                    `Evidence collection: ${this.formatDate(this.startDate)} → ${this.formatDate(this.targetDate)}`;
+
+                // Update the label based on eligibility status
+                const timelineLabel = document.querySelector('.progress-item .progress-label span:first-child');
+                if (timelineLabel) {
+                    if (timeRemaining.eligible) {
+                        timelineLabel.textContent = '🎉 Application Eligibility';
+                    } else {
+                        timelineLabel.textContent = 'Time Until Eligible';
+                    }
+                }
+
+                // Update progress overview title
+                const progressTitle = document.getElementById('progress-overview-title');
+                if (progressTitle && timeRemaining.eligible) {
+                    progressTitle.innerHTML = '🎉 Overall Progress - You\'re Eligible!';
+                } else if (progressTitle) {
+                    progressTitle.innerHTML = '📊 Overall Progress';
+                }
 
                 // Core documents progress
                 const coreTotal = this.documentDefs.core.filter(d => d.required).length;
@@ -1428,10 +1557,23 @@
                 const totalDocs = this.getTotalDocumentCount();
                 document.getElementById('total-documents').textContent = totalDocs;
 
-                // Days remaining
+                // Days remaining/eligible
                 const now = new Date();
                 const daysRemaining = Math.ceil((this.targetDate - now) / (1000 * 60 * 60 * 24));
-                document.getElementById('days-remaining').textContent = Math.max(0, daysRemaining);
+                const timeRemaining = this.calculateTimeRemaining();
+                
+                const daysElement = document.getElementById('days-remaining');
+                const daysLabelElement = daysElement.nextElementSibling;
+                
+                if (timeRemaining.eligible) {
+                    daysElement.textContent = Math.abs(daysRemaining);
+                    daysLabelElement.textContent = 'Days Eligible';
+                    daysElement.style.color = '#28a745';
+                } else {
+                    daysElement.textContent = Math.max(0, daysRemaining);
+                    daysLabelElement.textContent = 'Days Until Eligible';
+                    daysElement.style.color = '#667eea';
+                }
 
                 // Current quarter
                 const currentQuarter = this.getCurrentQuarterInfo();
@@ -1754,7 +1896,8 @@
                     timeline: {
                         startDate: this.startDate.toISOString(),
                         targetDate: this.targetDate.toISOString(),
-                        customTargetDate: this.data.settings.targetDate
+                        customTargetDate: this.data.settings.targetDate,
+                        timeRemaining: this.calculateTimeRemaining()
                     },
                     summary: {
                         totalDocuments: this.getTotalDocumentCount(),
@@ -1806,6 +1949,7 @@
             printChecklist() {
                 const printWindow = window.open('', '_blank');
                 const quarters = this.getQuarters();
+                const timeRemaining = this.calculateTimeRemaining();
                 
                 const html = `
                     <!DOCTYPE html>
@@ -1819,12 +1963,21 @@
                             .item { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
                             .completed { background: #e8f5e9; }
                             .required { background: #ffebee; }
+                            .timeline-info { background: #f0f4ff; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
                             @media print { body { font-size: 12pt; } }
                         </style>
                     </head>
                     <body>
                         <h1>GRC Application Checklist</h1>
                         <p>Generated: ${new Date().toLocaleDateString()}</p>
+                        
+                        <div class="timeline-info">
+                            <h2>Application Eligibility Status</h2>
+                            <p><strong>Earliest Application Date:</strong> ${this.formatDate(this.targetDate)}</p>
+                            <p><strong>Status:</strong> ${timeRemaining.text}</p>
+                            <p><strong>Evidence Collection Period:</strong> ${this.formatDate(this.startDate)} - ${this.formatDate(this.targetDate)}</p>
+                            ${timeRemaining.eligible ? '<p style="color: green;"><strong>🎉 Congratulations! You have completed the mandatory waiting period and are now eligible to apply for your Gender Recognition Certificate!</strong></p>' : '<p><em>The UK requires a 2-year waiting period before you can apply for a Gender Recognition Certificate. Use this time to collect evidence of living in your acquired gender.</em></p>'}
+                        </div>
                         
                         <div class="section">
                             <h2>Evidence Timeline</h2>
