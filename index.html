@@ -176,7 +176,6 @@
                 transform: scale(1.02);
             }
         }
-        }
 
         /* Stats Cards */
         .stats-overview {
@@ -693,6 +692,72 @@
             flex-wrap: wrap;
         }
 
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Migration Progress Overlay */
+        #migration-overlay .spinner {
+            border-top-color: white;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-info {
+            background: #cff4fc;
+            color: #055160;
+            border: 1px solid #b6effb;
+        }
+
+        .alert-success {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Storage info */
+        .storage-info {
+            background: #e8f5e9;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -735,85 +800,6 @@
                 width: 100%;
                 justify-content: center;
             }
-        }
-
-        /* Loading Spinner */
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Tooltips */
-        .tooltip {
-            position: relative;
-            display: inline-block;
-        }
-
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 200px;
-            background-color: #333;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 8px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -100px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            font-size: 0.85rem;
-        }
-
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-
-        /* Alert Messages */
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .alert-info {
-            background: #cff4fc;
-            color: #055160;
-            border: 1px solid #b6effb;
-        }
-
-        .alert-success {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .alert-warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-
-        .alert-danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
         }
     </style>
 </head>
@@ -931,6 +917,10 @@
                 <div class="alert alert-info" style="margin-top: 20px;">
                     <span>💙</span>
                     <span>Every piece of evidence you collect brings you closer to your goal. You're doing amazingly! 🏳️‍⚧️</span>
+                </div>
+                
+                <div class="storage-info">
+                    <strong>✨ Enhanced Storage:</strong> This tracker now uses IndexedDB for unlimited document storage capacity! If you're upgrading from a previous version, your data will be automatically migrated.
                 </div>
                 
                 <p style="text-align: center; color: #666; font-size: 0.9rem; margin-top: 10px;">
@@ -1106,25 +1096,575 @@
     </div>
 
     <script>
-        // GRC Tracker Application
-        class GRCTracker {
-            constructor() {
-                this.storageKey = 'grc_tracker_v2';
-                this.currentQuarter = null;
-                this.currentCategory = 'core';
-                
-                this.initializeData();
-                this.setupEventHandlers();
-                this.updateDatesFromSettings();
-                this.render();
-                
-                // Auto-save notes
-                this.autoSaveTimer = null;
+        // IndexedDB Storage Class - handles all data persistence
+        class IndexedDBStorage {
+            constructor(dbName = 'GRCTracker', version = 1) {
+                this.dbName = dbName;
+                this.version = version;
+                this.db = null;
             }
 
-            initializeData() {
-                const stored = localStorage.getItem(this.storageKey);
-                this.data = stored ? JSON.parse(stored) : {
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+                    
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        
+                        // Create object stores
+                        if (!db.objectStoreNames.contains('metadata')) {
+                            db.createObjectStore('metadata', { keyPath: 'key' });
+                        }
+                        
+                        if (!db.objectStoreNames.contains('files')) {
+                            const fileStore = db.createObjectStore('files', { keyPath: 'id' });
+                            fileStore.createIndex('category', 'category', { unique: false });
+                            fileStore.createIndex('quarterId', 'quarterId', { unique: false });
+                        }
+                    };
+                });
+            }
+
+            async saveData(data) {
+                const transaction = this.db.transaction(['metadata'], 'readwrite');
+                const store = transaction.objectStore('metadata');
+                
+                // Store everything except files in metadata
+                const metadataOnly = {
+                    quarters: {},
+                    documents: {
+                        core: {},
+                        medical: {},
+                        name: {},
+                        marriage: {}
+                    },
+                    notes: data.notes || {},
+                    settings: data.settings || { targetDate: '2025-12-01' }
+                };
+
+                // Copy quarter data without files
+                Object.keys(data.quarters || {}).forEach(quarterId => {
+                    metadataOnly.quarters[quarterId] = {
+                        notes: data.quarters[quarterId]?.notes || '',
+                        fileCount: data.quarters[quarterId]?.files?.length || 0
+                    };
+                });
+
+                // Copy document data without files
+                Object.keys(data.documents || {}).forEach(category => {
+                    Object.keys(data.documents[category] || {}).forEach(docId => {
+                        metadataOnly.documents[category][docId] = {
+                            fileCount: data.documents[category][docId]?.files?.length || 0
+                        };
+                    });
+                });
+
+                await store.put({ key: 'appData', value: metadataOnly });
+                return transaction.complete;
+            }
+
+            async loadData() {
+                const transaction = this.db.transaction(['metadata'], 'readonly');
+                const store = transaction.objectStore('metadata');
+                const request = store.get('appData');
+                
+                return new Promise((resolve) => {
+                    request.onsuccess = () => {
+                        if (request.result) {
+                            resolve(request.result.value);
+                        } else {
+                            // Return default data structure
+                            resolve({
+                                quarters: {},
+                                documents: {
+                                    core: {},
+                                    medical: {},
+                                    name: {},
+                                    marriage: {}
+                                },
+                                notes: {},
+                                settings: { targetDate: '2025-12-01' }
+                            });
+                        }
+                    };
+                    request.onerror = () => {
+                        console.error('Error loading data:', request.error);
+                        resolve({
+                            quarters: {},
+                            documents: {
+                                core: {},
+                                medical: {},
+                                name: {},
+                                marriage: {}
+                            },
+                            notes: {},
+                            settings: { targetDate: '2025-12-01' }
+                        });
+                    };
+                });
+            }
+
+            async saveFile(fileData) {
+                const transaction = this.db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                
+                const fileRecord = {
+                    id: this.generateFileId(),
+                    name: fileData.name,
+                    size: fileData.size,
+                    type: fileData.type,
+                    data: fileData.data,
+                    uploadDate: fileData.uploadDate,
+                    category: fileData.category || null,
+                    docId: fileData.docId || null,
+                    quarterId: fileData.quarterId || null
+                };
+                
+                await store.put(fileRecord);
+                return fileRecord.id;
+            }
+
+            async getFiles(filter = {}) {
+                const transaction = this.db.transaction(['files'], 'readonly');
+                const store = transaction.objectStore('files');
+                
+                return new Promise((resolve) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        let files = request.result;
+                        
+                        // Apply filters
+                        if (filter.quarterId) {
+                            files = files.filter(f => f.quarterId === filter.quarterId);
+                        }
+                        if (filter.category && filter.docId) {
+                            files = files.filter(f => f.category === filter.category && f.docId === filter.docId);
+                        }
+                        
+                        resolve(files);
+                    };
+                    request.onerror = () => {
+                        console.error('Error loading files:', request.error);
+                        resolve([]);
+                    };
+                });
+            }
+
+            async deleteFile(fileId) {
+                const transaction = this.db.transaction(['files'], 'readwrite');
+                const store = transaction.objectStore('files');
+                await store.delete(fileId);
+            }
+
+            async clearAllData() {
+                const transaction = this.db.transaction(['metadata', 'files'], 'readwrite');
+                const metadataStore = transaction.objectStore('metadata');
+                const filesStore = transaction.objectStore('files');
+                
+                await metadataStore.clear();
+                await filesStore.clear();
+            }
+
+            generateFileId() {
+                return Date.now().toString(36) + Math.random().toString(36).substr(2);
+            }
+        }
+
+        // GRC Tracker Application - Updated to use IndexedDB
+        class GRCTracker {
+            constructor() {
+                this.storage = new IndexedDBStorage();
+                this.currentQuarter = null;
+                this.currentCategory = 'core';
+                this.data = null;
+                this.isInitialized = false;
+                this.oldStorageKey = 'grc_tracker_v2';
+                
+                this.init();
+            }
+
+            async init() {
+                try {
+                    await this.storage.init();
+                    
+                    // Check for and migrate old localStorage data
+                    const migrationResult = await this.checkAndMigrateOldData();
+                    
+                    await this.loadData();
+                    this.setupEventHandlers();
+                    this.updateDatesFromSettings();
+                    await this.render();
+                    this.isInitialized = true;
+                    
+                    // Show migration success message if applicable
+                    if (migrationResult.migrated) {
+                        this.showMigrationSuccessMessage(migrationResult.stats);
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize GRC Tracker:', error);
+                    // Fallback to basic functionality
+                    this.initializeFallbackData();
+                    this.setupEventHandlers();
+                    this.updateDatesFromSettings();
+                    this.render();
+                }
+            }
+
+            async checkAndMigrateOldData() {
+                try {
+                    // Check if old localStorage data exists
+                    const oldDataString = localStorage.getItem(this.oldStorageKey);
+                    if (!oldDataString) {
+                        return { migrated: false };
+                    }
+
+                    console.log('Found old localStorage data, starting migration...');
+                    
+                    // Parse old data
+                    const oldData = JSON.parse(oldDataString);
+                    
+                    // Show migration confirmation dialog
+                    const shouldMigrate = confirm(
+                        '📦 Data Migration Required\n\n' +
+                        'We found data from the previous version of this app. ' +
+                        'Would you like to migrate your data to the new improved storage system?\n\n' +
+                        '✅ Benefits:\n' +
+                        '• Unlimited document storage\n' +
+                        '• Better performance\n' +
+                        '• No more storage quota errors\n\n' +
+                        'Click OK to migrate, or Cancel to start fresh.'
+                    );
+                    
+                    if (!shouldMigrate) {
+                        // User chose not to migrate, ask if they want to delete old data
+                        const shouldDelete = confirm(
+                            'Would you like to delete the old data to free up space?\n\n' +
+                            '⚠️ This action cannot be undone.'
+                        );
+                        
+                        if (shouldDelete) {
+                            localStorage.removeItem(this.oldStorageKey);
+                            alert('✅ Old data deleted successfully.');
+                        }
+                        
+                        return { migrated: false };
+                    }
+
+                    // Show migration progress
+                    this.showMigrationProgress('Starting migration...');
+                    
+                    // Migrate the data
+                    const migrationStats = await this.migrateData(oldData);
+                    
+                    // Verify migration success
+                    const verificationResult = await this.verifyMigration(oldData, migrationStats);
+                    
+                    if (verificationResult.success) {
+                        // Migration successful, delete old data
+                        localStorage.removeItem(this.oldStorageKey);
+                        console.log('Migration completed successfully, old data removed');
+                        
+                        return { 
+                            migrated: true, 
+                            stats: migrationStats 
+                        };
+                    } else {
+                        throw new Error(`Migration verification failed: ${verificationResult.error}`);
+                    }
+                    
+                } catch (error) {
+                    console.error('Migration failed:', error);
+                    alert(
+                        '❌ Migration Failed\n\n' +
+                        `Error: ${error.message}\n\n` +
+                        'Your old data is still safe in localStorage. ' +
+                        'You can try refreshing the page to attempt migration again, ' +
+                        'or continue using the app with a fresh start.'
+                    );
+                    return { migrated: false, error: error.message };
+                }
+            }
+
+            showMigrationProgress(message) {
+                // Create or update migration progress overlay
+                let overlay = document.getElementById('migration-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'migration-overlay';
+                    overlay.style.cssText = `
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: rgba(0,0,0,0.8);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 10000;
+                        color: white;
+                        font-family: inherit;
+                    `;
+                    
+                    const content = document.createElement('div');
+                    content.style.cssText = `
+                        background: #667eea;
+                        padding: 30px;
+                        border-radius: 10px;
+                        text-align: center;
+                        max-width: 400px;
+                    `;
+                    
+                    content.innerHTML = `
+                        <h3 style="margin-bottom: 20px;">📦 Migrating Data</h3>
+                        <div class="spinner" style="margin-bottom: 20px;"></div>
+                        <p id="migration-message">${message}</p>
+                    `;
+                    
+                    overlay.appendChild(content);
+                    document.body.appendChild(overlay);
+                } else {
+                    document.getElementById('migration-message').textContent = message;
+                }
+            }
+
+            hideMigrationProgress() {
+                const overlay = document.getElementById('migration-overlay');
+                if (overlay) {
+                    overlay.remove();
+                }
+            }
+
+            async migrateData(oldData) {
+                const stats = {
+                    filesConverted: 0,
+                    totalFiles: 0,
+                    quarters: 0,
+                    documents: 0,
+                    errors: []
+                };
+
+                try {
+                    // Migrate settings and basic structure
+                    this.showMigrationProgress('Migrating settings...');
+                    
+                    const newData = {
+                        quarters: {},
+                        documents: {
+                            core: {},
+                            medical: {},
+                            name: {},
+                            marriage: {}
+                        },
+                        notes: oldData.notes || {},
+                        settings: oldData.settings || { targetDate: '2025-12-01' }
+                    };
+
+                    // Count total files for progress tracking
+                    let totalFileCount = 0;
+                    
+                    // Count quarter files
+                    Object.values(oldData.quarters || {}).forEach(quarter => {
+                        if (quarter.files) {
+                            totalFileCount += quarter.files.length;
+                        }
+                    });
+                    
+                    // Count document files
+                    Object.values(oldData.documents || {}).forEach(category => {
+                        Object.values(category || {}).forEach(doc => {
+                            if (doc.files) {
+                                totalFileCount += doc.files.length;
+                            }
+                        });
+                    });
+                    
+                    stats.totalFiles = totalFileCount;
+
+                    // Migrate quarter data and files
+                    this.showMigrationProgress('Migrating quarter evidence...');
+                    
+                    for (const [quarterId, quarterData] of Object.entries(oldData.quarters || {})) {
+                        newData.quarters[quarterId] = {
+                            notes: quarterData.notes || '',
+                            fileCount: 0
+                        };
+
+                        if (quarterData.files && quarterData.files.length > 0) {
+                            for (const file of quarterData.files) {
+                                try {
+                                    // Convert base64 data URL to binary
+                                    const binaryData = this.dataURLToArrayBuffer(file.data);
+                                    
+                                    // Save to IndexedDB
+                                    await this.storage.saveFile({
+                                        name: file.name,
+                                        size: file.size,
+                                        type: file.type,
+                                        data: binaryData,
+                                        uploadDate: file.uploadDate,
+                                        quarterId: quarterId
+                                    });
+                                    
+                                    newData.quarters[quarterId].fileCount++;
+                                    stats.filesConverted++;
+                                    
+                                    this.showMigrationProgress(`Converting files... ${stats.filesConverted}/${stats.totalFiles}`);
+                                } catch (error) {
+                                    console.error(`Error migrating quarter file: ${file.name}`, error);
+                                    stats.errors.push(`Quarter file ${file.name}: ${error.message}`);
+                                }
+                            }
+                        }
+                        
+                        stats.quarters++;
+                    }
+
+                    // Migrate document category files
+                    this.showMigrationProgress('Migrating document categories...');
+                    
+                    for (const [category, categoryData] of Object.entries(oldData.documents || {})) {
+                        for (const [docId, docData] of Object.entries(categoryData || {})) {
+                            newData.documents[category][docId] = {
+                                fileCount: 0
+                            };
+
+                            if (docData.files && docData.files.length > 0) {
+                                for (const file of docData.files) {
+                                    try {
+                                        // Convert base64 data URL to binary
+                                        const binaryData = this.dataURLToArrayBuffer(file.data);
+                                        
+                                        // Save to IndexedDB
+                                        await this.storage.saveFile({
+                                            name: file.name,
+                                            size: file.size,
+                                            type: file.type,
+                                            data: binaryData,
+                                            uploadDate: file.uploadDate,
+                                            category: category,
+                                            docId: docId
+                                        });
+                                        
+                                        newData.documents[category][docId].fileCount++;
+                                        stats.filesConverted++;
+                                        stats.documents++;
+                                        
+                                        this.showMigrationProgress(`Converting files... ${stats.filesConverted}/${stats.totalFiles}`);
+                                    } catch (error) {
+                                        console.error(`Error migrating document file: ${file.name}`, error);
+                                        stats.errors.push(`Document file ${file.name}: ${error.message}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Save migrated metadata
+                    this.showMigrationProgress('Finalizing migration...');
+                    await this.storage.saveData(newData);
+                    
+                    this.hideMigrationProgress();
+                    return stats;
+                    
+                } catch (error) {
+                    this.hideMigrationProgress();
+                    throw new Error(`Migration failed: ${error.message}`);
+                }
+            }
+
+            dataURLToArrayBuffer(dataURL) {
+                // Remove data URL prefix (e.g., "data:image/jpeg;base64,")
+                const base64String = dataURL.split(',')[1];
+                
+                // Convert base64 to binary
+                const binaryString = atob(base64String);
+                const bytes = new Uint8Array(binaryString.length);
+                
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                
+                return bytes.buffer;
+            }
+
+            async verifyMigration(oldData, migrationStats) {
+                try {
+                    // Load the migrated data
+                    const newData = await this.storage.loadData();
+                    const allFiles = await this.storage.getFiles();
+                    
+                    // Verify file counts match
+                    const expectedFileCount = migrationStats.totalFiles;
+                    const actualFileCount = allFiles.length;
+                    
+                    if (actualFileCount !== migrationStats.filesConverted) {
+                        return {
+                            success: false,
+                            error: `File count mismatch: expected ${migrationStats.filesConverted}, got ${actualFileCount}`
+                        };
+                    }
+                    
+                    // Verify settings were preserved
+                    if (!newData.settings || !newData.settings.targetDate) {
+                        return {
+                            success: false,
+                            error: 'Settings not properly migrated'
+                        };
+                    }
+                    
+                    // Verify quarter structure
+                    const oldQuarterCount = Object.keys(oldData.quarters || {}).length;
+                    const newQuarterCount = Object.keys(newData.quarters || {}).length;
+                    
+                    if (oldQuarterCount !== newQuarterCount) {
+                        return {
+                            success: false,
+                            error: `Quarter count mismatch: expected ${oldQuarterCount}, got ${newQuarterCount}`
+                        };
+                    }
+                    
+                    return { success: true };
+                    
+                } catch (error) {
+                    return {
+                        success: false,
+                        error: error.message
+                    };
+                }
+            }
+
+            showMigrationSuccessMessage(stats) {
+                const hasErrors = stats.errors.length > 0;
+                const message = hasErrors 
+                    ? `🎉 Migration Completed!\n\n✅ Successfully migrated:\n• ${stats.filesConverted} files\n• ${stats.quarters} quarters\n• Document categories\n\n⚠️ ${stats.errors.length} files had issues:\n${stats.errors.slice(0, 3).join('\n')}${stats.errors.length > 3 ? '\n...' : ''}\n\nYour app now has unlimited storage capacity!`
+                    : `🎉 Migration Completed Successfully!\n\n✅ Migrated:\n• ${stats.filesConverted} files\n• ${stats.quarters} quarters\n• All document categories\n\nYour app now has unlimited storage capacity!\nNo more "quota exceeded" errors! 🚀`;
+                
+                setTimeout(() => {
+                    alert(message);
+                }, 1000);
+            }
+
+            async loadData() {
+                this.data = await this.storage.loadData();
+                
+                // Ensure data structure is complete
+                if (!this.data.settings) {
+                    this.data.settings = { targetDate: '2025-12-01' };
+                }
+                if (!this.data.settings.targetDate) {
+                    this.data.settings.targetDate = '2025-12-01';
+                }
+            }
+
+            initializeFallbackData() {
+                this.data = {
                     quarters: {},
                     documents: {
                         core: {},
@@ -1133,21 +1673,106 @@
                         marriage: {}
                     },
                     notes: {},
-                    settings: {
-                        targetDate: '2025-12-01'
-                    }
+                    settings: { targetDate: '2025-12-01' }
                 };
+            }
 
-                // Ensure settings exist
-                if (!this.data.settings) {
-                    this.data.settings = { targetDate: '2025-12-01' };
+            async saveData() {
+                if (this.storage) {
+                    try {
+                        await this.storage.saveData(this.data);
+                    } catch (error) {
+                        console.error('Error saving data:', error);
+                    }
                 }
-                if (!this.data.settings.targetDate) {
-                    this.data.settings.targetDate = '2025-12-01';
+            }
+
+            setupEventHandlers() {
+                // Upload area
+                const uploadArea = document.getElementById('upload-area');
+                if (uploadArea) {
+                    uploadArea.onclick = () => document.getElementById('file-input').click();
                 }
 
-                // Document definitions
-                this.documentDefs = {
+                // Quarter notes auto-save
+                const notesTextarea = document.getElementById('quarter-notes');
+                if (notesTextarea) {
+                    notesTextarea.addEventListener('input', (e) => {
+                        clearTimeout(this.autoSaveTimer);
+                        this.autoSaveTimer = setTimeout(() => {
+                            this.saveQuarterNotes(e.target.value);
+                        }, 1000);
+                    });
+                }
+            }
+
+            updateDatesFromSettings() {
+                // Calculate start date as 2 years before target date
+                this.targetDate = new Date(this.data.settings.targetDate);
+                this.startDate = new Date(this.targetDate);
+                this.startDate.setFullYear(this.startDate.getFullYear() - 2);
+                
+                // Update UI
+                this.updateDateDisplay();
+            }
+
+            updateDateDisplay() {
+                const targetInput = document.getElementById('target-date');
+                const startSpan = document.getElementById('calculated-start-date');
+                const endSpan = document.getElementById('calculated-end-date');
+                const durationSpan = document.getElementById('timeline-duration');
+                
+                if (targetInput) {
+                    targetInput.value = this.data.settings.targetDate;
+                }
+                
+                if (startSpan) {
+                    startSpan.textContent = this.formatDate(this.startDate);
+                }
+                
+                if (endSpan) {
+                    endSpan.textContent = this.formatDate(this.targetDate);
+                }
+                
+                if (durationSpan) {
+                    const months = Math.round((this.targetDate - this.startDate) / (1000 * 60 * 60 * 24 * 30.44));
+                    durationSpan.textContent = `${months} months`;
+                }
+            }
+
+            async updateTargetDate(dateString) {
+                // Validate date
+                const newDate = new Date(dateString);
+                const minDate = new Date('2024-01-01');
+                const maxDate = new Date('2030-12-31');
+                
+                if (newDate < minDate || newDate > maxDate) {
+                    alert('Please select a date between 2024 and 2030');
+                    document.getElementById('target-date').value = this.data.settings.targetDate;
+                    return;
+                }
+                
+                // Update settings
+                this.data.settings.targetDate = dateString;
+                await this.saveData();
+                
+                // Recalculate dates and update display
+                this.updateDatesFromSettings();
+                await this.render();
+            }
+
+            async render() {
+                await this.updateProgress();
+                await this.updateStats();
+                await this.renderTimeline();
+                await this.renderDocuments();
+                await this.updateCategoryBadges();
+                this.updateDateDisplay();
+            }
+
+            // Document definitions
+            get documentDefs() {
+                return {
                     core: [
                         {
                             id: 'birth-certificate',
@@ -1225,94 +1850,102 @@
                 };
             }
 
-            setupEventHandlers() {
-                // Upload area
-                const uploadArea = document.getElementById('upload-area');
-                if (uploadArea) {
-                    uploadArea.onclick = () => document.getElementById('file-input').click();
-                }
-
-                // Quarter notes auto-save
-                const notesTextarea = document.getElementById('quarter-notes');
-                if (notesTextarea) {
-                    notesTextarea.addEventListener('input', (e) => {
-                        clearTimeout(this.autoSaveTimer);
-                        this.autoSaveTimer = setTimeout(() => {
-                            this.saveQuarterNotes(e.target.value);
-                        }, 1000);
+            // Quarter management
+            getQuarters() {
+                const quarters = [];
+                let current = new Date(this.startDate);
+                let id = 1;
+                
+                while (current < this.targetDate) {
+                    const end = new Date(current);
+                    end.setMonth(current.getMonth() + 3);
+                    
+                    quarters.push({
+                        id: `q${id}`,
+                        name: `Q${Math.ceil((current.getMonth() + 1) / 3)} ${current.getFullYear()}`,
+                        start: new Date(current),
+                        end: new Date(end)
                     });
-                }
-            }
-
-            updateDatesFromSettings() {
-                // Calculate start date as 2 years before target date
-                this.targetDate = new Date(this.data.settings.targetDate);
-                this.startDate = new Date(this.targetDate);
-                this.startDate.setFullYear(this.startDate.getFullYear() - 2);
-                
-                // Update UI
-                this.updateDateDisplay();
-            }
-
-            updateDateDisplay() {
-                const targetInput = document.getElementById('target-date');
-                const startSpan = document.getElementById('calculated-start-date');
-                const endSpan = document.getElementById('calculated-end-date');
-                const durationSpan = document.getElementById('timeline-duration');
-                
-                if (targetInput) {
-                    targetInput.value = this.data.settings.targetDate;
+                    
+                    current = end;
+                    id++;
                 }
                 
-                if (startSpan) {
-                    startSpan.textContent = this.formatDate(this.startDate);
-                }
-                
-                if (endSpan) {
-                    endSpan.textContent = this.formatDate(this.targetDate);
-                }
-                
-                if (durationSpan) {
-                    const months = Math.round((this.targetDate - this.startDate) / (1000 * 60 * 60 * 24 * 30.44));
-                    durationSpan.textContent = `${months} months`;
-                }
+                return quarters;
             }
 
-            updateTargetDate(dateString) {
-                // Validate date
-                const newDate = new Date(dateString);
-                const minDate = new Date('2024-01-01');
-                const maxDate = new Date('2030-12-31');
+            getCurrentQuarterInfo() {
+                const now = new Date();
+                const quarters = this.getQuarters();
+                return quarters.find(q => now >= q.start && now < q.end) || quarters[0];
+            }
+
+            isCurrentQuarter(quarter) {
+                const now = new Date();
+                return now >= quarter.start && now < quarter.end;
+            }
+
+            async isQuarterComplete(quarter) {
+                const count = await this.getQuarterEvidenceCount(quarter.id);
+                return count >= 2;
+            }
+
+            async getQuarterEvidenceCount(quarterId) {
+                if (!this.storage) return this.data.quarters[quarterId]?.fileCount || 0;
                 
-                if (newDate < minDate || newDate > maxDate) {
-                    alert('Please select a date between 2024 and 2030');
-                    document.getElementById('target-date').value = this.data.settings.targetDate;
-                    return;
+                const files = await this.storage.getFiles({ quarterId });
+                return files.length;
+            }
+
+            async getTotalEvidenceCount() {
+                if (!this.storage) {
+                    return Object.values(this.data.quarters).reduce((total, quarter) => {
+                        return total + (quarter.fileCount || 0);
+                    }, 0);
                 }
                 
-                // Update settings
-                this.data.settings.targetDate = dateString;
-                this.saveData();
+                const files = await this.storage.getFiles();
+                return files.filter(f => f.quarterId).length;
+            }
+
+            // Document management
+            async hasDocument(category, docId) {
+                if (!this.storage) return !!(this.data.documents[category][docId]?.fileCount);
                 
-                // Recalculate dates and update display
-                this.updateDatesFromSettings();
-                this.render();
+                const files = await this.storage.getFiles({ category, docId });
+                return files.length > 0;
             }
 
-            saveData() {
-                localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+            async getDocumentFiles(category, docId) {
+                if (!this.storage) return [];
+                
+                return await this.storage.getFiles({ category, docId });
             }
 
-            render() {
-                this.updateProgress();
-                this.updateStats();
-                this.renderTimeline();
-                this.renderDocuments();
-                this.updateCategoryBadges();
-                this.updateDateDisplay();
+            async getTotalDocumentCount() {
+                if (!this.storage) {
+                    let count = 0;
+                    
+                    // Count category documents
+                    Object.keys(this.data.documents).forEach(category => {
+                        Object.values(this.data.documents[category]).forEach(doc => {
+                            count += doc.fileCount || 0;
+                        });
+                    });
+                    
+                    // Count quarter evidence
+                    Object.values(this.data.quarters).forEach(quarter => {
+                        count += quarter.fileCount || 0;
+                    });
+                    
+                    return count;
+                }
+                
+                const files = await this.storage.getFiles();
+                return files.length;
             }
 
-            // New method to calculate and format time remaining
+            // Time remaining calculation
             calculateTimeRemaining() {
                 const now = new Date();
                 const diffMs = this.targetDate - now;
@@ -1383,8 +2016,8 @@
                 }
             }
 
-            updateProgress() {
-                // Timeline progress - keep the visual bar but update the text
+            async updateProgress() {
+                // Timeline progress
                 const now = new Date();
                 const totalDays = (this.targetDate - this.startDate) / (1000 * 60 * 60 * 24);
                 const elapsedDays = (now - this.startDate) / (1000 * 60 * 60 * 24);
@@ -1430,9 +2063,10 @@
 
                 // Core documents progress
                 const coreTotal = this.documentDefs.core.filter(d => d.required).length;
-                const coreComplete = this.documentDefs.core.filter(d => 
-                    d.required && this.hasDocument('core', d.id)
-                ).length;
+                let coreComplete = 0;
+                for (const doc of this.documentDefs.core.filter(d => d.required)) {
+                    if (await this.hasDocument('core', doc.id)) coreComplete++;
+                }
                 const coreProgress = coreTotal > 0 ? (coreComplete / coreTotal) * 100 : 0;
                 
                 document.getElementById('core-progress').style.width = `${coreProgress}%`;
@@ -1441,9 +2075,10 @@
 
                 // Medical reports progress
                 const medicalTotal = 2;
-                const medicalComplete = this.documentDefs.medical.filter(d => 
-                    this.hasDocument('medical', d.id)
-                ).length;
+                let medicalComplete = 0;
+                for (const doc of this.documentDefs.medical) {
+                    if (await this.hasDocument('medical', doc.id)) medicalComplete++;
+                }
                 const medicalProgress = (medicalComplete / medicalTotal) * 100;
                 
                 document.getElementById('medical-progress').style.width = `${medicalProgress}%`;
@@ -1452,17 +2087,21 @@
 
                 // Evidence progress
                 const evidenceTarget = 16; // 8 quarters * 2 pieces
-                const evidenceCount = this.getTotalEvidenceCount();
+                const evidenceCount = await this.getTotalEvidenceCount();
                 const evidenceProgress = Math.min(100, (evidenceCount / evidenceTarget) * 100);
                 
                 document.getElementById('evidence-progress').style.width = `${evidenceProgress}%`;
                 document.getElementById('evidence-percentage').textContent = `${evidenceProgress.toFixed(0)}%`;
                 document.getElementById('evidence-info').textContent = `${evidenceCount} pieces collected (target: ${evidenceTarget})`;
 
-                // Name change progress (100% if ANY document is uploaded)
-                const nameComplete = this.documentDefs.name.filter(d => 
-                    this.hasDocument('name', d.id)
-                ).length;
+                // Name change progress
+                let nameComplete = 0;
+                for (const doc of this.documentDefs.name) {
+                    if (await this.hasDocument('name', doc.id)) {
+                        nameComplete++;
+                        break; // Any document counts as complete
+                    }
+                }
                 const nameProgress = nameComplete > 0 ? 100 : 0;
                 
                 document.getElementById('name-progress').style.width = `${nameProgress}%`;
@@ -1470,15 +2109,15 @@
                 document.getElementById('name-info').textContent = nameComplete > 0 ? 
                     `✓ Name change documented` : `No name change documents`;
 
-                // Marriage/Partnership progress - Updated logic
-                const marriageProgress = this.getMarriageProgress();
+                // Marriage/Partnership progress
+                const marriageProgress = await this.getMarriageProgress();
                 
                 document.getElementById('marriage-progress').style.width = `${marriageProgress.percentage}%`;
                 document.getElementById('marriage-percentage').textContent = `${marriageProgress.percentage}%`;
                 document.getElementById('marriage-info').textContent = marriageProgress.info;
 
                 // Calculate master progress
-                this.updateMasterProgress({
+                await this.updateMasterProgress({
                     timeline: timelineProgress,
                     core: coreProgress,
                     medical: medicalProgress,
@@ -1496,12 +2135,11 @@
                 });
             }
 
-            getMarriageProgress() {
-                const hasSpouseDeclaration = this.hasDocument('marriage', 'spouse-declaration');
-                const hasMarriageCert = this.hasDocument('marriage', 'marriage-certificate');
-                const hasCivilPartnershipCert = this.hasDocument('marriage', 'civil-partnership-certificate');
+            async getMarriageProgress() {
+                const hasSpouseDeclaration = await this.hasDocument('marriage', 'spouse-declaration');
+                const hasMarriageCert = await this.hasDocument('marriage', 'marriage-certificate');
+                const hasCivilPartnershipCert = await this.hasDocument('marriage', 'civil-partnership-certificate');
                 
-                // Complete = spouse declaration + (marriage cert OR civil partnership cert)
                 const hasRequiredCertificate = hasMarriageCert || hasCivilPartnershipCert;
                 const isComplete = hasSpouseDeclaration && hasRequiredCertificate;
                 
@@ -1523,13 +2161,8 @@
                 };
             }
 
-            updateMasterProgress(progressData) {
+            async updateMasterProgress(progressData) {
                 // Calculate weighted master progress
-                // Core and Medical are required (40% weight)
-                // Evidence is required (40% weight)
-                // Timeline (10% weight)
-                // Name and Marriage are optional (10% weight)
-                
                 const requiredProgress = (progressData.core * 0.2) + (progressData.medical * 0.2) + (progressData.evidence * 0.4);
                 const timelineWeight = progressData.timeline * 0.1;
                 const optionalProgress = Math.max(progressData.name, progressData.marriage) * 0.1;
@@ -1545,16 +2178,22 @@
                 const nameStatus = progressData.nameComplete > 0 ? 1 : 0;
                 const optionalDocs = nameStatus + progressData.marriageComplete;
                 
+                const quarters = this.getQuarters();
+                let completeQuarters = 0;
+                for (const quarter of quarters) {
+                    if (await this.isQuarterComplete(quarter)) completeQuarters++;
+                }
+                
                 document.getElementById('master-progress-details').innerHTML = `
                     <strong>${totalComplete}</strong> of <strong>${totalRequired}</strong> required items completed
                     ${optionalDocs > 0 ? ` • <strong>${optionalDocs}</strong> optional categories completed` : ''}
-                    • ${this.getQuarters().filter(q => this.isQuarterComplete(q)).length} of 8 quarters complete
+                    • ${completeQuarters} of 8 quarters complete
                 `;
             }
 
-            updateStats() {
+            async updateStats() {
                 // Total documents
-                const totalDocs = this.getTotalDocumentCount();
+                const totalDocs = await this.getTotalDocumentCount();
                 document.getElementById('total-documents').textContent = totalDocs;
 
                 // Days remaining/eligible
@@ -1581,16 +2220,19 @@
 
                 // Quarters complete
                 const quarters = this.getQuarters();
-                const completeQuarters = quarters.filter(q => this.isQuarterComplete(q)).length;
+                let completeQuarters = 0;
+                for (const quarter of quarters) {
+                    if (await this.isQuarterComplete(quarter)) completeQuarters++;
+                }
                 document.getElementById('quarters-complete').textContent = `${completeQuarters}/8`;
             }
 
-            renderTimeline() {
+            async renderTimeline() {
                 const container = document.getElementById('timeline-grid');
                 const quarters = this.getQuarters();
                 
-                container.innerHTML = quarters.map(quarter => {
-                    const evidenceCount = this.getQuarterEvidenceCount(quarter.id);
+                const quarterElements = await Promise.all(quarters.map(async (quarter) => {
+                    const evidenceCount = await this.getQuarterEvidenceCount(quarter.id);
                     const isComplete = evidenceCount >= 2;
                     const isCurrent = this.isCurrentQuarter(quarter);
                     const isFuture = new Date() < quarter.start;
@@ -1630,17 +2272,19 @@
                             <div class="quarter-action">Click to manage evidence →</div>
                         </div>
                     `;
-                }).join('');
+                }));
+                
+                container.innerHTML = quarterElements.join('');
             }
 
-            renderDocuments() {
-                ['core', 'medical', 'name', 'marriage'].forEach(category => {
+            async renderDocuments() {
+                for (const category of ['core', 'medical', 'name', 'marriage']) {
                     const container = document.getElementById(`docs-${category}`);
                     const docs = this.documentDefs[category];
                     
-                    container.innerHTML = docs.map(doc => {
-                        const hasDoc = this.hasDocument(category, doc.id);
-                        const files = this.getDocumentFiles(category, doc.id);
+                    const docElements = await Promise.all(docs.map(async (doc) => {
+                        const hasDoc = await this.hasDocument(category, doc.id);
+                        const files = await this.getDocumentFiles(category, doc.id);
                         const statusClass = hasDoc ? 'completed' : (doc.required ? 'required' : '');
                         const statusText = hasDoc ? 'Completed' : (doc.required ? 'Required' : 'Optional');
                         const statusIcon = hasDoc ? '✅' : (doc.required ? '⚠️' : '📋');
@@ -1670,147 +2314,99 @@
                                 </div>
                             </div>
                         `;
-                    }).join('');
-                });
+                    }));
+                    
+                    container.innerHTML = docElements.join('');
+                }
             }
 
-            updateCategoryBadges() {
+            async updateCategoryBadges() {
                 const categories = ['core', 'medical', 'name', 'marriage'];
                 
-                categories.forEach(category => {
+                for (const category of categories) {
                     const badge = document.getElementById(`badge-${category}`);
                     if (badge) {
                         if (category === 'core' || category === 'medical') {
-                            const completed = this.documentDefs[category].filter(d => 
-                                this.hasDocument(category, d.id)
-                            ).length;
+                            let completed = 0;
+                            for (const doc of this.documentDefs[category].filter(d => d.required)) {
+                                if (await this.hasDocument(category, doc.id)) completed++;
+                            }
                             const total = this.documentDefs[category].filter(d => d.required).length;
                             badge.textContent = `${completed}/${total}`;
                         } else if (category === 'name') {
-                            const completed = this.documentDefs[category].filter(d => 
-                                this.hasDocument(category, d.id)
-                            ).length;
+                            let completed = 0;
+                            for (const doc of this.documentDefs[category]) {
+                                if (await this.hasDocument(category, doc.id)) {
+                                    completed++;
+                                    break;
+                                }
+                            }
                             badge.textContent = completed > 0 ? '✓' : '0';
                         } else if (category === 'marriage') {
-                            const marriageProgress = this.getMarriageProgress();
+                            const marriageProgress = await this.getMarriageProgress();
                             badge.textContent = marriageProgress.complete ? '✓' : '0';
                         }
                     }
-                });
-            }
-
-            // Quarter management
-            getQuarters() {
-                const quarters = [];
-                let current = new Date(this.startDate);
-                let id = 1;
-                
-                while (current < this.targetDate) {
-                    const end = new Date(current);
-                    end.setMonth(current.getMonth() + 3);
-                    
-                    quarters.push({
-                        id: `q${id}`,
-                        name: `Q${Math.ceil((current.getMonth() + 1) / 3)} ${current.getFullYear()}`,
-                        start: new Date(current),
-                        end: new Date(end)
-                    });
-                    
-                    current = end;
-                    id++;
                 }
-                
-                return quarters;
             }
 
-            getCurrentQuarterInfo() {
-                const now = new Date();
-                const quarters = this.getQuarters();
-                return quarters.find(q => now >= q.start && now < q.end) || quarters[0];
-            }
-
-            isCurrentQuarter(quarter) {
-                const now = new Date();
-                return now >= quarter.start && now < quarter.end;
-            }
-
-            isQuarterComplete(quarter) {
-                return this.getQuarterEvidenceCount(quarter.id) >= 2;
-            }
-
-            getQuarterEvidenceCount(quarterId) {
-                const quarterData = this.data.quarters[quarterId];
-                return quarterData ? (quarterData.files || []).length : 0;
-            }
-
-            getTotalEvidenceCount() {
-                return Object.values(this.data.quarters).reduce((total, quarter) => {
-                    return total + (quarter.files || []).length;
-                }, 0);
-            }
-
-            // Document management
-            hasDocument(category, docId) {
-                return !!(this.data.documents[category][docId]?.files?.length);
-            }
-
-            getDocumentFiles(category, docId) {
-                return this.data.documents[category][docId]?.files || [];
-            }
-
-            getTotalDocumentCount() {
-                let count = 0;
-                
-                // Count category documents
-                Object.keys(this.data.documents).forEach(category => {
-                    Object.values(this.data.documents[category]).forEach(doc => {
-                        if (doc.files && doc.files.length > 0) {
-                            count += doc.files.length;
-                        }
-                    });
-                });
-                
-                // Count quarter evidence
-                count += this.getTotalEvidenceCount();
-                
-                return count;
-            }
-
-            // File handling
-            handleFileUpload(files) {
+            // File handling with IndexedDB
+            async handleFileUpload(files) {
                 if (!this.currentQuarter) return;
                 
                 if (!this.data.quarters[this.currentQuarter]) {
-                    this.data.quarters[this.currentQuarter] = { files: [], notes: '' };
+                    this.data.quarters[this.currentQuarter] = { notes: '', fileCount: 0 };
                 }
                 
                 const quarterData = this.data.quarters[this.currentQuarter];
                 
-                Array.from(files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        quarterData.files.push({
-                            name: file.name,
-                            size: file.size,
-                            type: file.type,
-                            data: e.target.result,
-                            uploadDate: new Date().toISOString()
-                        });
+                for (const file of Array.from(files)) {
+                    try {
+                        const arrayBuffer = await this.readFileAsArrayBuffer(file);
                         
-                        this.saveData();
-                        this.render();
-                        this.renderQuarterFiles();
-                    };
-                    reader.readAsDataURL(file);
+                        if (this.storage) {
+                            await this.storage.saveFile({
+                                name: file.name,
+                                size: file.size,
+                                type: file.type,
+                                data: arrayBuffer,
+                                uploadDate: new Date().toISOString(),
+                                quarterId: this.currentQuarter
+                            });
+                        }
+                        
+                        quarterData.fileCount = (quarterData.fileCount || 0) + 1;
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        alert(`Error uploading ${file.name}: ${error.message}`);
+                    }
+                }
+                
+                await this.saveData();
+                await this.render();
+                await this.renderQuarterFiles();
+            }
+
+            readFileAsArrayBuffer(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(new Error('Failed to read file'));
+                    reader.readAsArrayBuffer(file);
                 });
             }
 
-            renderQuarterFiles() {
+            async renderQuarterFiles() {
                 if (!this.currentQuarter) return;
                 
                 const container = document.getElementById('file-list');
-                const quarterData = this.data.quarters[this.currentQuarter];
-                const files = quarterData?.files || [];
+                
+                if (!this.storage) {
+                    container.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">Storage not available</p>';
+                    return;
+                }
+                
+                const files = await this.storage.getFiles({ quarterId: this.currentQuarter });
                 
                 if (files.length === 0) {
                     container.innerHTML = '<p style="text-align: center; color: #666; margin-top: 20px;">No files uploaded yet</p>';
@@ -1830,10 +2426,10 @@
                                 </div>
                             </div>
                             <div class="file-actions">
-                                <button class="btn btn-success" onclick="tracker.downloadFile('${this.currentQuarter}', ${index})">
+                                <button class="btn btn-success" onclick="tracker.downloadFile('${file.id}')">
                                     Download
                                 </button>
-                                <button class="btn btn-danger" onclick="tracker.deleteFile('${this.currentQuarter}', ${index})">
+                                <button class="btn btn-danger" onclick="tracker.deleteFile('${file.id}')">
                                     Delete
                                 </button>
                             </div>
@@ -1841,38 +2437,61 @@
                     `).join('');
             }
 
-            downloadFile(quarterId, fileIndex) {
-                const quarterData = this.data.quarters[quarterId];
-                if (!quarterData || !quarterData.files[fileIndex]) return;
+            async downloadFile(fileId) {
+                if (!this.storage) return;
                 
-                const file = quarterData.files[fileIndex];
+                const files = await this.storage.getFiles();
+                const file = files.find(f => f.id === fileId);
+                if (!file) return;
+                
+                const blob = new Blob([file.data], { type: file.type });
+                const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.href = file.data;
+                link.href = url;
                 link.download = file.name;
                 link.click();
+                URL.revokeObjectURL(url);
             }
 
-            deleteFile(quarterId, fileIndex) {
+            async deleteFile(fileId) {
                 if (!confirm('Are you sure you want to delete this file?')) return;
                 
-                const quarterData = this.data.quarters[quarterId];
-                if (!quarterData || !quarterData.files[fileIndex]) return;
+                if (!this.storage) return;
                 
-                quarterData.files.splice(fileIndex, 1);
-                this.saveData();
-                this.render();
-                this.renderQuarterFiles();
+                // Get file details before deleting
+                const files = await this.storage.getFiles();
+                const file = files.find(f => f.id === fileId);
+                if (!file) return;
+                
+                await this.storage.deleteFile(fileId);
+                
+                // Update counters
+                if (file.quarterId && this.data.quarters[file.quarterId]) {
+                    this.data.quarters[file.quarterId].fileCount = Math.max(0, 
+                        (this.data.quarters[file.quarterId].fileCount || 1) - 1);
+                }
+                
+                if (file.category && file.docId && this.data.documents[file.category][file.docId]) {
+                    this.data.documents[file.category][file.docId].fileCount = Math.max(0,
+                        (this.data.documents[file.category][file.docId].fileCount || 1) - 1);
+                }
+                
+                await this.saveData();
+                await this.render();
+                if (this.currentQuarter) {
+                    await this.renderQuarterFiles();
+                }
             }
 
-            saveQuarterNotes(notes) {
+            async saveQuarterNotes(notes) {
                 if (!this.currentQuarter) return;
                 
                 if (!this.data.quarters[this.currentQuarter]) {
-                    this.data.quarters[this.currentQuarter] = { files: [], notes: '' };
+                    this.data.quarters[this.currentQuarter] = { notes: '', fileCount: 0 };
                 }
                 
                 this.data.quarters[this.currentQuarter].notes = notes;
-                this.saveData();
+                await this.saveData();
             }
 
             // Utility functions
@@ -1892,8 +2511,14 @@
                 return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
             }
 
-            // Export functions
-            exportProgress() {
+            // Export functions (updated for IndexedDB)
+            async exportProgress() {
+                const quarters = this.getQuarters();
+                let completeQuarters = 0;
+                for (const quarter of quarters) {
+                    if (await this.isQuarterComplete(quarter)) completeQuarters++;
+                }
+                
                 const report = {
                     exportDate: new Date().toISOString(),
                     timeline: {
@@ -1903,32 +2528,34 @@
                         timeRemaining: this.calculateTimeRemaining()
                     },
                     summary: {
-                        totalDocuments: this.getTotalDocumentCount(),
-                        evidenceCount: this.getTotalEvidenceCount(),
-                        quartersComplete: this.getQuarters().filter(q => this.isQuarterComplete(q)).length
+                        totalDocuments: await this.getTotalDocumentCount(),
+                        evidenceCount: await this.getTotalEvidenceCount(),
+                        quartersComplete: completeQuarters
                     },
                     quarters: {},
                     documents: {}
                 };
 
                 // Add quarter summaries
-                this.getQuarters().forEach(quarter => {
+                for (const quarter of quarters) {
                     report.quarters[quarter.id] = {
                         name: quarter.name,
                         dateRange: `${this.formatDate(quarter.start)} - ${this.formatDate(quarter.end)}`,
-                        evidenceCount: this.getQuarterEvidenceCount(quarter.id),
-                        isComplete: this.isQuarterComplete(quarter)
+                        evidenceCount: await this.getQuarterEvidenceCount(quarter.id),
+                        isComplete: await this.isQuarterComplete(quarter)
                     };
-                });
+                }
 
                 // Add document summaries
-                Object.keys(this.documentDefs).forEach(category => {
-                    report.documents[category] = this.documentDefs[category].map(doc => ({
-                        title: doc.title,
-                        required: doc.required,
-                        uploaded: this.hasDocument(category, doc.id)
-                    }));
-                });
+                for (const category of Object.keys(this.documentDefs)) {
+                    report.documents[category] = await Promise.all(
+                        this.documentDefs[category].map(async (doc) => ({
+                            title: doc.title,
+                            required: doc.required,
+                            uploaded: await this.hasDocument(category, doc.id)
+                        }))
+                    );
+                }
 
                 const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
@@ -1939,8 +2566,14 @@
                 URL.revokeObjectURL(url);
             }
 
-            exportBackup() {
-                const blob = new Blob([JSON.stringify(this.data, null, 2)], { type: 'application/json' });
+            async exportBackup() {
+                // Create a simplified backup without actual file data
+                const backupData = {
+                    ...this.data,
+                    _backupNote: 'This backup contains metadata only. File data is not included due to size limitations.'
+                };
+                
+                const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -1949,10 +2582,37 @@
                 URL.revokeObjectURL(url);
             }
 
-            printChecklist() {
+            async printChecklist() {
                 const printWindow = window.open('', '_blank');
                 const quarters = this.getQuarters();
                 const timeRemaining = this.calculateTimeRemaining();
+                
+                let quartersHtml = '';
+                for (const q of quarters) {
+                    const isComplete = await this.isQuarterComplete(q);
+                    const evidenceCount = await this.getQuarterEvidenceCount(q.id);
+                    quartersHtml += `
+                        <div class="item ${isComplete ? 'completed' : ''}">
+                            <strong>${q.name}</strong> (${this.formatDate(q.start)} - ${this.formatDate(q.end)})<br>
+                            Evidence: ${evidenceCount}/2 pieces
+                        </div>
+                    `;
+                }
+                
+                let documentsHtml = '';
+                for (const category of Object.keys(this.documentDefs)) {
+                    documentsHtml += `<h3>${category.charAt(0).toUpperCase() + category.slice(1)} Documents</h3>`;
+                    for (const doc of this.documentDefs[category]) {
+                        const hasDoc = await this.hasDocument(category, doc.id);
+                        documentsHtml += `
+                            <div class="item ${hasDoc ? 'completed' : (doc.required ? 'required' : '')}">
+                                <strong>${doc.title}</strong><br>
+                                ${doc.description}<br>
+                                Status: ${hasDoc ? '✅ Uploaded' : (doc.required ? '⚠️ Required' : '📋 Optional')}
+                            </div>
+                        `;
+                    }
+                }
                 
                 const html = `
                     <!DOCTYPE html>
@@ -1984,26 +2644,12 @@
                         
                         <div class="section">
                             <h2>Evidence Timeline</h2>
-                            ${quarters.map(q => `
-                                <div class="item ${this.isQuarterComplete(q) ? 'completed' : ''}">
-                                    <strong>${q.name}</strong> (${this.formatDate(q.start)} - ${this.formatDate(q.end)})<br>
-                                    Evidence: ${this.getQuarterEvidenceCount(q.id)}/2 pieces
-                                </div>
-                            `).join('')}
+                            ${quartersHtml}
                         </div>
                         
                         <div class="section">
                             <h2>Required Documents</h2>
-                            ${Object.keys(this.documentDefs).map(category => `
-                                <h3>${category.charAt(0).toUpperCase() + category.slice(1)} Documents</h3>
-                                ${this.documentDefs[category].map(doc => `
-                                    <div class="item ${this.hasDocument(category, doc.id) ? 'completed' : (doc.required ? 'required' : '')}">
-                                        <strong>${doc.title}</strong><br>
-                                        ${doc.description}<br>
-                                        Status: ${this.hasDocument(category, doc.id) ? '✅ Uploaded' : (doc.required ? '⚠️ Required' : '📋 Optional')}
-                                    </div>
-                                `).join('')}
-                            `).join('')}
+                            ${documentsHtml}
                         </div>
                     </body>
                     </html>
@@ -2023,8 +2669,8 @@
             tracker = new GRCTracker();
         });
 
-        // Global functions
-        function openQuarterModal(quarterId) {
+        // Global functions (updated for async)
+        async function openQuarterModal(quarterId) {
             const modal = document.getElementById('quarter-modal');
             const quarters = tracker.getQuarters();
             const quarter = quarters.find(q => q.id === quarterId);
@@ -2042,7 +2688,7 @@
             notesTextarea.value = quarterData?.notes || '';
             
             // Render existing files
-            tracker.renderQuarterFiles();
+            await tracker.renderQuarterFiles();
             
             // Show modal
             modal.style.display = 'block';
@@ -2069,59 +2715,71 @@
             tracker.currentCategory = category;
         }
 
-        function uploadCategoryDocument(category, docId) {
+        async function uploadCategoryDocument(category, docId) {
             // Create temporary file input
             const input = document.createElement('input');
             input.type = 'file';
             input.multiple = true;
             input.accept = '*/*';
             
-            input.onchange = (e) => {
+            input.onchange = async (e) => {
                 const files = Array.from(e.target.files);
                 
                 if (!tracker.data.documents[category][docId]) {
-                    tracker.data.documents[category][docId] = { files: [] };
+                    tracker.data.documents[category][docId] = { fileCount: 0 };
                 }
                 
-                files.forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        tracker.data.documents[category][docId].files.push({
-                            name: file.name,
-                            size: file.size,
-                            type: file.type,
-                            data: event.target.result,
-                            uploadDate: new Date().toISOString()
-                        });
+                for (const file of files) {
+                    try {
+                        const arrayBuffer = await tracker.readFileAsArrayBuffer(file);
                         
-                        tracker.saveData();
-                        tracker.render();
+                        if (tracker.storage) {
+                            await tracker.storage.saveFile({
+                                name: file.name,
+                                size: file.size,
+                                type: file.type,
+                                data: arrayBuffer,
+                                uploadDate: new Date().toISOString(),
+                                category: category,
+                                docId: docId
+                            });
+                        }
+                        
+                        tracker.data.documents[category][docId].fileCount = 
+                            (tracker.data.documents[category][docId].fileCount || 0) + 1;
                         
                         // Show success message
                         alert(`✅ ${file.name} uploaded successfully!`);
-                    };
-                    reader.readAsDataURL(file);
-                });
+                    } catch (error) {
+                        console.error('Error uploading file:', error);
+                        alert(`❌ Error uploading ${file.name}: ${error.message}`);
+                    }
+                }
+                
+                await tracker.saveData();
+                await tracker.render();
             };
             
             input.click();
         }
 
-        function viewDocumentFiles(category, docId) {
-            const files = tracker.getDocumentFiles(category, docId);
+        async function viewDocumentFiles(category, docId) {
+            const files = await tracker.getDocumentFiles(category, docId);
             if (files.length === 0) return;
             
             // For now, just download the first file
-            // In a full implementation, you'd show a list to choose from
             const file = files[0];
+            const blob = new Blob([file.data], { type: file.type });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = file.data;
+            link.href = url;
             link.download = file.name;
             link.click();
+            URL.revokeObjectURL(url);
         }
 
-        function deleteCategoryDocument(category, docId) {
-            const files = tracker.getDocumentFiles(category, docId);
+        async function deleteCategoryDocument(category, docId) {
+            const files = await tracker.getDocumentFiles(category, docId);
             if (files.length === 0) return;
             
             const docTitle = tracker.documentDefs[category].find(d => d.id === docId)?.title || 'document';
@@ -2129,9 +2787,10 @@
             if (files.length === 1) {
                 // Single file - simple confirmation
                 if (confirm(`⚠️ Are you sure you want to delete the uploaded ${docTitle}?\n\nThis action cannot be undone.`)) {
+                    await tracker.storage.deleteFile(files[0].id);
                     delete tracker.data.documents[category][docId];
-                    tracker.saveData();
-                    tracker.render();
+                    await tracker.saveData();
+                    await tracker.render();
                     alert(`✅ ${docTitle} deleted successfully.`);
                 }
             } else {
@@ -2143,9 +2802,12 @@
                 
                 if (choice.toUpperCase() === 'ALL') {
                     if (confirm(`⚠️ Are you sure you want to delete ALL ${files.length} files for ${docTitle}?\n\nThis action cannot be undone.`)) {
+                        for (const file of files) {
+                            await tracker.storage.deleteFile(file.id);
+                        }
                         delete tracker.data.documents[category][docId];
-                        tracker.saveData();
-                        tracker.render();
+                        await tracker.saveData();
+                        await tracker.render();
                         alert(`✅ All files for ${docTitle} deleted successfully.`);
                     }
                 } else {
@@ -2157,15 +2819,18 @@
                     
                     const fileName = files[fileIndex].name;
                     if (confirm(`⚠️ Are you sure you want to delete "${fileName}"?\n\nThis action cannot be undone.`)) {
-                        tracker.data.documents[category][docId].files.splice(fileIndex, 1);
+                        await tracker.storage.deleteFile(files[fileIndex].id);
+                        
+                        tracker.data.documents[category][docId].fileCount = Math.max(0,
+                            (tracker.data.documents[category][docId].fileCount || 1) - 1);
                         
                         // If no files left, remove the entire document entry
-                        if (tracker.data.documents[category][docId].files.length === 0) {
+                        if (tracker.data.documents[category][docId].fileCount === 0) {
                             delete tracker.data.documents[category][docId];
                         }
                         
-                        tracker.saveData();
-                        tracker.render();
+                        await tracker.saveData();
+                        await tracker.render();
                         alert(`✅ "${fileName}" deleted successfully.`);
                     }
                 }
@@ -2203,12 +2868,12 @@
             }
         }
 
-        function importBackup(input) {
+        async function importBackup(input) {
             const file = input.files[0];
             if (!file) return;
             
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 try {
                     const importedData = JSON.parse(e.target.result);
                     
@@ -2226,13 +2891,13 @@
                     }
                     
                     // Confirm before importing
-                    if (confirm('This will replace all your current data. Are you sure you want to import this backup?')) {
+                    if (confirm('This will replace all your current data. Are you sure you want to import this backup?\n\nNote: File data is not included in backups and will need to be re-uploaded.')) {
                         tracker.data = importedData;
-                        tracker.saveData();
+                        await tracker.saveData();
                         tracker.updateDatesFromSettings();
-                        tracker.render();
+                        await tracker.render();
                         
-                        alert('✅ Backup imported successfully!');
+                        alert('✅ Backup imported successfully!\n\nNote: You will need to re-upload your files as they are not included in backups.');
                     }
                 } catch (error) {
                     alert('❌ Error importing backup: ' + error.message);
@@ -2245,15 +2910,22 @@
             reader.readAsText(file);
         }
 
-        function updateTargetDate(dateString) {
-            tracker.updateTargetDate(dateString);
+        async function updateTargetDate(dateString) {
+            if (tracker && tracker.isInitialized) {
+                await tracker.updateTargetDate(dateString);
+            }
         }
 
-        function clearAllData() {
-            if (confirm('⚠️ This will permanently delete all your data. Are you sure?')) {
+        async function clearAllData() {
+            if (confirm('⚠️ This will permanently delete all your data including uploaded files. Are you sure?')) {
                 if (confirm('⚠️ This action cannot be undone. Please confirm again.')) {
                     // Preserve the current target date setting
                     const currentTargetDate = tracker.data.settings.targetDate;
+                    
+                    // Clear IndexedDB
+                    if (tracker.storage) {
+                        await tracker.storage.clearAllData();
+                    }
                     
                     tracker.data = {
                         quarters: {},
@@ -2268,9 +2940,9 @@
                             targetDate: currentTargetDate
                         }
                     };
-                    tracker.saveData();
+                    await tracker.saveData();
                     tracker.updateDatesFromSettings();
-                    tracker.render();
+                    await tracker.render();
                     
                     alert('✅ All data has been cleared.');
                 }
@@ -2301,6 +2973,7 @@
         window.printChecklist = () => tracker.printChecklist();
         window.importBackup = importBackup;
         window.clearAllData = clearAllData;
+        window.updateTargetDate = updateTargetDate;
     </script>
 </body>
 </html>
